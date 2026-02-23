@@ -1,0 +1,24 @@
+{
+    "name": "laravelplus/digdeep",
+    "description": "A Laravel package that profiles URLs and shows the complete execution flow.",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "LaravelPlus\\DigDeep\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "LaravelPlus\\DigDeep\\DigDeepServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.4",
+        "illuminate/support": "^12.0",
+        "ext-pdo_sqlite": "*"
+    },
+    "minimum-stability": "stable"
+}
