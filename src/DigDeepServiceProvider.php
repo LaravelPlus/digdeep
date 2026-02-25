@@ -4,6 +4,11 @@ namespace LaravelPlus\DigDeep;
 
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Mcp\Facades\Mcp;
+use LaravelPlus\DigDeep\Commands\ClearCommand;
+use LaravelPlus\DigDeep\Commands\PruneCommand;
+use LaravelPlus\DigDeep\Commands\StatusCommand;
+use LaravelPlus\DigDeep\Mcp\Servers\DigDeepServer;
 use LaravelPlus\DigDeep\Middleware\ProfileRequest;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
 
@@ -19,7 +24,6 @@ class DigDeepServiceProvider extends ServiceProvider
 
         $this->app->singleton(DigDeepStorage::class, function () {
             return new DigDeepStorage(
-                config('digdeep.storage_path'),
                 config('digdeep.max_profiles'),
             );
         });
@@ -33,6 +37,7 @@ class DigDeepServiceProvider extends ServiceProvider
             return;
         }
 
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'digdeep');
 
@@ -40,22 +45,40 @@ class DigDeepServiceProvider extends ServiceProvider
             __DIR__.'/../config/digdeep.php' => config_path('digdeep.php'),
         ], 'digdeep-config');
 
+        $this->publishes([
+            __DIR__.'/../resources/views' => resource_path('views/vendor/digdeep'),
+        ], 'digdeep-views');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                ClearCommand::class,
+                PruneCommand::class,
+                StatusCommand::class,
+            ]);
+        }
+
         // Register auto-profiling middleware globally
         if (config('digdeep.auto_profile', true)) {
             $kernel = $this->app->make(Kernel::class);
             $kernel->pushMiddleware(ProfileRequest::class);
         }
+
+        // Register MCP server if laravel/mcp is installed
+        if (class_exists(Mcp::class)) {
+            Mcp::local('digdeep', DigDeepServer::class);
+        }
     }
 
     private function isEnabled(): bool
     {
-        if (! config('digdeep.enabled', true)) {
+        $enabled = config('digdeep.enabled');
+
+        if ($enabled === false) {
             return false;
         }
 
-        // Explicitly set via env var — honour regardless of environment
-        if (env('DIGDEEP_ENABLED') !== null) {
-            return (bool) env('DIGDEEP_ENABLED');
+        if ($enabled === true) {
+            return true;
         }
 
         return $this->app->environment('local', 'testing');

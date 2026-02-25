@@ -91,6 +91,15 @@
                     @php $totalFks = array_sum(array_column($schema, 'fk_count')); @endphp
                     <span class="text-[10px] font-bold opacity-50">{{ $totalFks }}</span>
                 </button>
+                <button @click="section = 'hints'" class="dd-sidebar-link" :class="section === 'hints' ? 'active' : ''">
+                    <svg class="w-4 h-4 shrink-0 opacity-60" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.44 2.278a3.68 3.68 0 01-2.38 0"/></svg>
+                    <span class="flex-1">Hints</span>
+                    @if(!empty($hints))
+                    <span class="text-[10px] font-bold text-drac-orange bg-drac-orange/10 px-1.5 py-0.5 rounded-full leading-none">{{ count($hints) }}</span>
+                    @else
+                    <span class="text-[10px] font-bold opacity-50">0</span>
+                    @endif
+                </button>
             </div>
         </nav>
 
@@ -357,6 +366,46 @@
                         @if(!$hasAnyFk)
                             @include('digdeep::_empty', ['message' => 'No foreign keys found on any table.'])
                         @endif
+                    </div>
+                @endif
+            </div>
+
+            {{-- ═══ Query Hints ═══ --}}
+            <div v-show="section === 'hints'" class="dd-fade">
+                @if(empty($hints))
+                    @include('digdeep::_empty', ['message' => 'No optimization hints. Your queries look good!'])
+                @else
+                    <div class="space-y-2">
+                        @foreach($hints as $hint)
+                        @php
+                            $severityColors = [
+                                'warning' => ['border' => 'border-drac-orange/30', 'bg' => 'bg-drac-orange/8', 'text' => 'text-drac-orange', 'badge' => 'bg-drac-orange/15 text-drac-orange'],
+                                'info' => ['border' => 'border-drac-yellow/30', 'bg' => 'bg-drac-yellow/8', 'text' => 'text-drac-yellow', 'badge' => 'bg-drac-yellow/15 text-drac-yellow'],
+                            ];
+                            $colors = $severityColors[$hint['severity']] ?? $severityColors['info'];
+                        @endphp
+                        <div class="bg-drac-surface rounded-xl border {{ $colors['border'] }} overflow-hidden">
+                            <div class="px-5 py-3 {{ $colors['bg'] }} flex items-center gap-3">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded {{ $colors['badge'] }} uppercase">{{ $hint['severity'] }}</span>
+                                <span class="text-sm font-semibold {{ $colors['text'] }}">{{ $hint['type'] }}</span>
+                                @if(!empty($hint['count']))
+                                <span class="text-drac-comment text-[10px] font-bold">{{ $hint['count'] }}x</span>
+                                @endif
+                            </div>
+                            <div class="px-5 py-3">
+                                <div class="text-drac-fg text-xs mb-2">{{ $hint['message'] }}</div>
+                                @if(!empty($hint['sql']))
+                                <code class="text-drac-cyan text-[11px] font-mono break-all block bg-drac-bg rounded px-3 py-2 border border-drac-border">{{ Str::limit($hint['sql'], 200) }}</code>
+                                @endif
+                                @if(!empty($hint['suggestion']))
+                                <div class="text-drac-green text-[10px] mt-2 flex items-center gap-1">
+                                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.44 2.278a3.68 3.68 0 01-2.38 0"/></svg>
+                                    {{ $hint['suggestion'] }}
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
                     </div>
                 @endif
             </div>

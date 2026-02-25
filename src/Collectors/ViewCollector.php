@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Event;
 
 class ViewCollector
 {
-    /** @var array<int, array{name: string, path: string, data_keys: array<string>}> */
+    /** @var array<int, array{name: string, path: string, data_keys: array<string>, rendered_at: float}> */
     private array $views = [];
 
     public function listen(): void
@@ -22,11 +22,12 @@ class ViewCollector
                 'name' => $view->name(),
                 'path' => str_replace(base_path().'/', '', $view->getPath()),
                 'data_keys' => array_keys($view->getData()),
+                'rendered_at' => microtime(true),
             ];
         });
     }
 
-    /** @return array<int, array{name: string, path: string, data_keys: array<string>}> */
+    /** @return array<int, array{name: string, path: string, data_keys: array<string>, rendered_at: float}> */
     public function getData(): array
     {
         return $this->views;

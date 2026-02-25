@@ -17,12 +17,7 @@ class InertiaCollector
             if ($content) {
                 $decoded = json_decode($content, true);
                 if (is_array($decoded)) {
-                    $this->data = [
-                        'component' => $decoded['component'] ?? null,
-                        'props' => $this->summarizeProps($decoded['props'] ?? []),
-                        'url' => $decoded['url'] ?? null,
-                        'version' => $decoded['version'] ?? null,
-                    ];
+                    $this->data = $this->buildInertiaData($decoded);
 
                     return;
                 }
@@ -34,12 +29,7 @@ class InertiaCollector
         if ($content && preg_match('/data-page="([^"]+)"/', $content, $matches)) {
             $decoded = json_decode(html_entity_decode($matches[1]), true);
             if (is_array($decoded)) {
-                $this->data = [
-                    'component' => $decoded['component'] ?? null,
-                    'props' => $this->summarizeProps($decoded['props'] ?? []),
-                    'url' => $decoded['url'] ?? null,
-                    'version' => $decoded['version'] ?? null,
-                ];
+                $this->data = $this->buildInertiaData($decoded);
             }
         }
     }
@@ -48,6 +38,54 @@ class InertiaCollector
     public function getData(): array
     {
         return $this->data;
+    }
+
+    /** @return array<string, mixed> */
+    private function buildInertiaData(array $decoded): array
+    {
+        $props = $decoded['props'] ?? [];
+
+        return [
+            'component' => $decoded['component'] ?? null,
+            'props' => $this->summarizeProps($props),
+            'props_raw' => $this->truncateProps($props),
+            'url' => $decoded['url'] ?? null,
+            'version' => $decoded['version'] ?? null,
+        ];
+    }
+
+    /**
+     * Capture raw prop values, truncated for storage.
+     *
+     * @return array<string, mixed>
+     */
+    private function truncateProps(array $props, int $maxDepth = 3, int $currentDepth = 0): array
+    {
+        if ($currentDepth >= $maxDepth) {
+            return ['...' => 'truncated'];
+        }
+
+        $result = [];
+
+        foreach ($props as $key => $value) {
+            if (is_array($value)) {
+                if (isset($value[0]) && count($value) > 10) {
+                    $result[$key] = array_map(
+                        fn ($item) => is_array($item) ? $this->truncateProps($item, $maxDepth, $currentDepth + 1) : $item,
+                        array_slice($value, 0, 10)
+                    );
+                    $result[$key][] = '... '.(count($value) - 10).' more items';
+                } elseif (is_array($value)) {
+                    $result[$key] = $this->truncateProps($value, $maxDepth, $currentDepth + 1);
+                }
+            } elseif (is_string($value) && strlen($value) > 500) {
+                $result[$key] = mb_substr($value, 0, 500).'... (truncated)';
+            } else {
+                $result[$key] = $value;
+            }
+        }
+
+        return $result;
     }
 
     /** @return array<string, string> */

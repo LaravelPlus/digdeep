@@ -80,6 +80,12 @@
                     Web
                 </span>
             </a>
+            <a href="/digdeep/pipeline" class="dd-nav-link {{ $currentSection === 'pipeline' ? 'active' : '' }}">
+                <span class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12"/></svg>
+                    Pipeline
+                </span>
+            </a>
             <a href="/digdeep/security" class="dd-nav-link {{ $currentSection === 'security' ? 'active' : '' }}">
                 <span class="flex items-center gap-1.5">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
@@ -110,11 +116,76 @@
                     Errors
                 </span>
             </a>
+            <a href="/digdeep/trends" class="dd-nav-link {{ $currentSection === 'trends' ? 'active' : '' }}">
+                <span class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/></svg>
+                    Trends
+                </span>
+            </a>
+            <a href="/digdeep/performance" class="dd-nav-link {{ $currentSection === 'performance' ? 'active' : '' }}">
+                <span class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+                    Performance
+                </span>
+            </a>
+            <a href="/digdeep/cache" class="dd-nav-link {{ $currentSection === 'cache' ? 'active' : '' }}">
+                <span class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+                    Cache
+                </span>
+            </a>
+            <a href="/digdeep/compare" class="dd-nav-link {{ $currentSection === 'compare' ? 'active' : '' }}">
+                <span class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+                    Compare
+                </span>
+            </a>
+            <a href="/digdeep/profiler" class="dd-nav-link {{ $currentSection === 'profiler' ? 'active' : '' }}">
+                <span class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5"/></svg>
+                    Profiler
+                </span>
+            </a>
         </div>
     </nav>
 
     <main class="px-8 py-8">
         @yield('content')
     </main>
+
+    {{-- Keyboard shortcuts --}}
+    <div id="dd-shortcuts-help" style="display:none" class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center" onclick="this.style.display='none'">
+        <div class="bg-drac-surface border border-drac-border rounded-2xl shadow-2xl p-6 w-[400px]" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-drac-fg text-sm font-bold">Keyboard Shortcuts</h3>
+                <button onclick="document.getElementById('dd-shortcuts-help').style.display='none'" class="text-drac-comment hover:text-drac-fg"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <div class="space-y-2 text-xs">
+                <div class="flex justify-between"><span class="text-drac-comment">Go to Dashboard</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">g d</kbd></div>
+                <div class="flex justify-between"><span class="text-drac-comment">Go to Pipeline</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">g p</kbd></div>
+                <div class="flex justify-between"><span class="text-drac-comment">Go to Security</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">g s</kbd></div>
+                <div class="flex justify-between"><span class="text-drac-comment">Go to Trends</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">g t</kbd></div>
+                <div class="flex justify-between"><span class="text-drac-comment">Go to Cache</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">g h</kbd></div>
+                <div class="flex justify-between"><span class="text-drac-comment">Go to Compare</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">g c</kbd></div>
+                <div class="flex justify-between"><span class="text-drac-comment">Go to Errors</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">g e</kbd></div>
+                <div class="flex justify-between"><span class="text-drac-comment">Go to Profiler</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">g r</kbd></div>
+                <div class="flex justify-between"><span class="text-drac-comment">Show shortcuts</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">?</kbd></div>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function(){
+        let pending = null;
+        const routes = { d: '/digdeep', p: '/digdeep/pipeline', s: '/digdeep/security', c: '/digdeep/compare', e: '/digdeep/errors', a: '/digdeep/audits', u: '/digdeep/urls', b: '/digdeep/database', t: '/digdeep/trends', h: '/digdeep/cache', f: '/digdeep/performance', r: '/digdeep/profiler' };
+        document.addEventListener('keydown', function(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) return;
+            if (e.key === '?') { document.getElementById('dd-shortcuts-help').style.display = document.getElementById('dd-shortcuts-help').style.display === 'none' ? 'flex' : 'none'; return; }
+            if (e.key === 'Escape') { document.getElementById('dd-shortcuts-help').style.display = 'none'; return; }
+            if (e.key === 'g' && !pending) { pending = setTimeout(function(){ pending = null; }, 500); return; }
+            if (pending && routes[e.key]) { clearTimeout(pending); pending = null; window.location.href = routes[e.key]; return; }
+            if (pending) { clearTimeout(pending); pending = null; }
+        });
+    })();
+    </script>
 </body>
 </html>
