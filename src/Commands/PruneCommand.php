@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Commands;
 
 use Illuminate\Console\Command;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
 
-class PruneCommand extends Command
+final class PruneCommand extends Command
 {
     protected $signature = 'digdeep:prune {--keep=100 : Number of profiles to keep}';
 

@@ -1,25 +1,27 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep;
 
 use Closure;
 use Illuminate\Http\Request;
 
-class DigDeep
+final class DigDeep
 {
     /**
      * The callback that should be used to authenticate DigDeep users.
      *
      * @var (Closure(Request): bool)|null
      */
-    protected static ?Closure $authUsing = null;
+    private static ?Closure $authUsing = null;
 
     /**
      * Register the DigDeep authentication callback.
      */
     public static function auth(Closure $callback): void
     {
-        static::$authUsing = $callback;
+        self::$authUsing = $callback;
     }
 
     /**
@@ -33,8 +35,8 @@ class DigDeep
         }
 
         // Use custom auth callback if registered
-        if (static::$authUsing) {
-            return (static::$authUsing)($request);
+        if (self::$authUsing) {
+            return (self::$authUsing)($request);
         }
 
         return false;

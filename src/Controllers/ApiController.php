@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Controllers;
 
 use Illuminate\Http\JsonResponse;
@@ -10,9 +12,11 @@ use Illuminate\Support\Str;
 use LaravelPlus\DigDeep\DigDeepCollector;
 use LaravelPlus\DigDeep\Models\DigDeepProfile;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
-class ApiController extends Controller
+final class ApiController extends Controller
 {
     public function __construct(
         private DigDeepStorage $storage,
@@ -26,7 +30,7 @@ class ApiController extends Controller
             'method' => ['nullable', 'string', 'in:GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS'],
         ]);
 
-        $url = trim($request->input('url', '/'));
+        $url = mb_trim($request->input('url', '/'));
 
         // Strip scheme + host so full URLs like http://127.0.0.1:8000/foo become /foo
         $parsed = parse_url($url);
@@ -36,11 +40,11 @@ class ApiController extends Controller
                 (isset($parsed['fragment']) ? '#'.$parsed['fragment'] : '');
         }
 
-        if (! str_starts_with($url, '/')) {
+        if (!str_starts_with($url, '/')) {
             $url = '/'.$url;
         }
 
-        $method = strtoupper($request->input('method', 'GET'));
+        $method = mb_strtoupper($request->input('method', 'GET'));
 
         $subRequest = Request::create($url, $method);
         $subRequest->headers->set('X-DigDeep-Profile', '1');
@@ -54,7 +58,7 @@ class ApiController extends Controller
 
         try {
             $response = app()->handle($subRequest);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->collector->setException($e);
             $this->collector->setResponse(500, [], 0);
 
@@ -88,7 +92,7 @@ class ApiController extends Controller
         $this->collector->setResponse(
             $response->getStatusCode(),
             $this->sanitizeHeaders($response->headers->all()),
-            strlen($response->getContent() ?: ''),
+            mb_strlen($response->getContent() ?: ''),
         );
 
         // Capture exception if response indicates an error
@@ -134,13 +138,13 @@ class ApiController extends Controller
     {
         $profile = $this->storage->find($id);
 
-        if (! $profile) {
+        if (!$profile) {
             return response()->json(['error' => 'Profile not found'], 404);
         }
 
         $filename = "digdeep-{$profile['method']}-".Str::slug($profile['url'])."-{$id}.json";
 
-        return response()->streamDownload(function () use ($profile) {
+        return response()->streamDownload(function () use ($profile): void {
             echo json_encode([
                 'version' => '1.0',
                 'generator' => 'DigDeep Laravel Profiler',
@@ -168,7 +172,7 @@ class ApiController extends Controller
     {
         $profile = $this->storage->find($id);
 
-        if (! $profile) {
+        if (!$profile) {
             return response()->json(['error' => 'Profile not found'], 404);
         }
 
@@ -184,7 +188,7 @@ class ApiController extends Controller
 
         try {
             $response = app()->handle($subRequest);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->collector->setException($e);
             $this->collector->setResponse(500, [], 0);
 
@@ -212,7 +216,7 @@ class ApiController extends Controller
         $this->collector->setResponse(
             $response->getStatusCode(),
             $this->sanitizeHeaders($response->headers->all()),
-            strlen($response->getContent() ?: ''),
+            mb_strlen($response->getContent() ?: ''),
         );
 
         if ($response->getStatusCode() >= 400 && $response->exception ?? null) {
@@ -264,14 +268,14 @@ class ApiController extends Controller
             return response()->json(['error' => 'No SQL provided'], 400);
         }
 
-        $trimmed = trim($sql);
+        $trimmed = mb_trim($sql);
 
-        if (strlen($trimmed) > 10000) {
+        if (mb_strlen($trimmed) > 10000) {
             return response()->json(['error' => 'SQL query exceeds maximum length'], 400);
         }
 
         // Only allow EXPLAIN on SELECT queries
-        if (! preg_match('/^\s*SELECT\b/i', $trimmed)) {
+        if (!preg_match('/^\s*SELECT\b/i', $trimmed)) {
             return response()->json(['error' => 'EXPLAIN only supports SELECT queries'], 400);
         }
 
@@ -296,9 +300,217 @@ class ApiController extends Controller
             cache()->put($cacheKey, $plan, 300);
 
             return response()->json(['plan' => $plan]);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 400);
         }
+    }
+
+    public function aiSuggest(Request $request): JsonResponse
+    {
+        $request->validate([
+            'sql'    => ['required', 'string', 'max:10000'],
+            'issue'  => ['required', 'string', 'in:n1,slow,select_star,duplicate'],
+            'caller' => ['nullable', 'string', 'max:500'],
+            'time_ms'=> ['nullable', 'numeric'],
+        ]);
+
+        $hasSdk   = class_exists(\LaravelPlus\DigDeep\Ai\Agents\QueryFixerAgent::class)
+            && function_exists('Laravel\Ai\agent');
+        $apiKey   = config('digdeep.ai_key');
+        $provider = config('digdeep.ai_provider', 'openai');
+
+        if (!$hasSdk && !$apiKey) {
+            return response()->json(['error' => 'No AI configured. Set DIGDEEP_AI_KEY in your .env file.'], 501);
+        }
+
+        $sql    = $request->input('sql');
+        $issue  = $request->input('issue');
+        $caller = $request->input('caller', '');
+        $timeMs = $request->input('time_ms');
+
+        $issueLabels = [
+            'n1'          => 'N+1 Query Pattern — this query appears to run in a loop, once per parent record.',
+            'slow'        => 'Slow Query — this query took '.round((float) $timeMs, 1).'ms, which exceeds the threshold.',
+            'select_star' => 'SELECT * — this query fetches all columns unnecessarily.',
+            'duplicate'   => 'Duplicate Query — this exact query runs multiple times in the same request.',
+        ];
+
+        $prompt = <<<PROMPT
+Fix this Laravel database query issue.
+
+Issue: {$issueLabels[$issue]}
+SQL: {$sql}
+Caller: {$caller}
+PROMPT;
+
+        try {
+            if ($hasSdk) {
+                // If a DigDeep-specific key is configured, inject it into the provider config
+                // so the SDK uses it instead of the app's default key.
+                if ($apiKey) {
+                    config(["ai.providers.{$provider}.key" => $apiKey]);
+                }
+
+                $response = (new \LaravelPlus\DigDeep\Ai\Agents\QueryFixerAgent())->prompt(
+                    $prompt,
+                    provider: $apiKey ? $provider : null,
+                );
+
+                return response()->json([
+                    'analysis'   => $response['analysis'],
+                    'suggestion' => $response['suggestion'],
+                    'file_path'  => $response['file_path'] ?? null,
+                    'old_code'   => $response['old_code'] ?? null,
+                    'new_code'   => $response['new_code'] ?? null,
+                ]);
+            }
+
+            $text = $this->callAiDirectly($provider, $apiKey, $prompt);
+
+            return response()->json(['suggestion' => $text]);
+        } catch (Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function aiInvestigateException(Request $request): JsonResponse
+    {
+        $request->validate([
+            'class'   => ['required', 'string', 'max:500'],
+            'message' => ['required', 'string', 'max:5000'],
+            'file'    => ['nullable', 'string', 'max:500'],
+            'line'    => ['nullable', 'integer'],
+            'trace'   => ['nullable', 'array', 'max:10'],
+        ]);
+
+        $hasSdk   = class_exists(\LaravelPlus\DigDeep\Ai\Agents\ExceptionInvestigatorAgent::class)
+            && function_exists('Laravel\Ai\agent');
+        $apiKey   = config('digdeep.ai_key');
+        $provider = config('digdeep.ai_provider', 'openai');
+
+        if (!$hasSdk && !$apiKey) {
+            return response()->json(['error' => 'No AI configured. Set DIGDEEP_AI_KEY in your .env file.'], 501);
+        }
+
+        $class   = $request->input('class');
+        $message = $request->input('message');
+        $file    = $request->input('file', '');
+        $line    = $request->input('line', '');
+        $trace   = collect($request->input('trace', []))
+            ->map(fn (array $f): string => ($f['file'] ?? '').':'.($f['line'] ?? '').' → '.($f['class'] ?? '').($f['function'] ? '::'.$f['function'].'()' : ''))
+            ->implode("\n");
+
+        $prompt = <<<PROMPT
+Investigate this Laravel exception.
+
+Exception: {$class}
+Message: {$message}
+File: {$file}
+Line: {$line}
+
+Stack Trace (top frames):
+{$trace}
+PROMPT;
+
+        try {
+            if ($hasSdk) {
+                if ($apiKey) {
+                    config(["ai.providers.{$provider}.key" => $apiKey]);
+                }
+
+                $response = (new \LaravelPlus\DigDeep\Ai\Agents\ExceptionInvestigatorAgent())->prompt(
+                    $prompt,
+                    provider: $apiKey ? $provider : null,
+                );
+
+                return response()->json([
+                    'analysis'   => $response['analysis'],
+                    'root_cause' => $response['root_cause'],
+                    'suggestion' => $response['suggestion'],
+                    'file_path'  => $response['file_path'] ?? null,
+                    'old_code'   => $response['old_code'] ?? null,
+                    'new_code'   => $response['new_code'] ?? null,
+                ]);
+            }
+
+            $text = $this->callAiDirectly($provider, $apiKey, $prompt);
+
+            return response()->json(['suggestion' => $text]);
+        } catch (Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function aiApplyFix(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file_path' => ['required', 'string', 'max:500'],
+            'old_code'  => ['required', 'string', 'max:10000'],
+            'new_code'  => ['required', 'string', 'max:10000'],
+        ]);
+
+        $tool = new \LaravelPlus\DigDeep\Ai\Tools\WriteSourceFileTool();
+
+        $fakeRequest = new \Laravel\Ai\Tools\Request([
+            'path'     => $request->input('file_path'),
+            'old_code' => $request->input('old_code'),
+            'new_code' => $request->input('new_code'),
+        ]);
+
+        $result = $tool->handle($fakeRequest);
+
+        if (str_starts_with((string) $result, 'Error:')) {
+            return response()->json(['error' => (string) $result], 422);
+        }
+
+        return response()->json(['status' => 'ok', 'message' => (string) $result]);
+    }
+
+    private function callAiDirectly(string $provider, string $apiKey, string $prompt): string
+    {
+        if ($provider === 'anthropic') {
+            $model = config('digdeep.ai_model', 'claude-haiku-4-5-20251001');
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'x-api-key' => $apiKey,
+                'anthropic-version' => '2023-06-01',
+            ])->post('https://api.anthropic.com/v1/messages', [
+                'model' => $model,
+                'max_tokens' => 500,
+                'system' => 'You are a Laravel database performance expert. Be concise and practical. Respond with PROBLEM:, FIX:, and WHY: sections.',
+                'messages' => [['role' => 'user', 'content' => $prompt]],
+            ]);
+
+            $body = $response->json();
+
+            if ($response->failed() || empty($body['content'][0]['text'])) {
+                throw new RuntimeException($body['error']['message'] ?? 'Anthropic API request failed.');
+            }
+
+            return $body['content'][0]['text'];
+        }
+
+        // Default: OpenAI
+        $model = config('digdeep.ai_model', 'gpt-4o-mini');
+
+        $response = \Illuminate\Support\Facades\Http::withToken($apiKey)
+            ->post('https://api.openai.com/v1/chat/completions', [
+                'model' => $model,
+                'messages' => [
+                    ['role' => 'system', 'content' => 'You are a Laravel database performance expert. Be concise and practical. Respond with PROBLEM:, FIX:, and WHY: sections.'],
+                    ['role' => 'user', 'content' => $prompt],
+                ],
+                'max_tokens' => 500,
+                'temperature' => 0.3,
+            ]);
+
+        $body = $response->json();
+
+        if ($response->failed() || empty($body['choices'][0]['message']['content'])) {
+            throw new RuntimeException($body['error']['message'] ?? 'OpenAI API request failed.');
+        }
+
+        return $body['choices'][0]['message']['content'];
     }
 
     public function profiles(Request $request): JsonResponse
@@ -321,7 +533,7 @@ class ApiController extends Controller
             'method' => $request->input('method'),
         ], fn ($v) => $v !== null);
 
-        $profiles = ! empty($criteria) ? $this->storage->filter($criteria) : $this->storage->all();
+        $profiles = !empty($criteria) ? $this->storage->filter($criteria) : $this->storage->all();
 
         if ($after) {
             $profiles = array_values(array_filter($profiles, fn ($p) => $p['created_at'] > $after));
@@ -436,7 +648,7 @@ class ApiController extends Controller
                 $totalErrors++;
             }
 
-            if (! isset($routeMap[$key])) {
+            if (!isset($routeMap[$key])) {
                 $routeMap[$key] = [
                     'method' => $p->method,
                     'url' => $p->url,
@@ -531,7 +743,7 @@ class ApiController extends Controller
 
         $filename = 'digdeep-export-'.now()->format('Y-m-d-His').'.json';
 
-        return response()->streamDownload(function () use ($profiles) {
+        return response()->streamDownload(function () use ($profiles): void {
             echo json_encode([
                 'version' => '1.0',
                 'generator' => 'DigDeep Laravel Profiler',
@@ -560,8 +772,8 @@ class ApiController extends Controller
         }
 
         if ($action === 'tag') {
-            $tag = strip_tags(trim($request->input('tag', '')));
-            if (empty($tag) || strlen($tag) > 500) {
+            $tag = strip_tags(mb_trim($request->input('tag', '')));
+            if (empty($tag) || mb_strlen($tag) > 500) {
                 return response()->json(['error' => 'Tag must be between 1 and 500 characters'], 400);
             }
 
@@ -585,6 +797,215 @@ class ApiController extends Controller
             'a' => $profileA,
             'b' => $profileB,
         ]);
+    }
+
+    public function htmlExport(Request $request): StreamedResponse|JsonResponse
+    {
+        $request->validate([
+            'template' => ['required', 'string', 'in:dashboard,performance,profile'],
+            'id' => ['nullable', 'string'],
+        ]);
+
+        $template = $request->input('template');
+        $exportedAt = now()->toDateTimeString();
+        $appName = config('app.name', 'Laravel');
+
+        if ($template === 'dashboard') {
+            $allProfiles = $this->storage->all();
+            $count = count($allProfiles);
+            $stats = $this->computeExportStats($allProfiles);
+            $topRoutes = $this->computeTopRoutes($allProfiles);
+
+            $data = [
+                'exportedAt' => $exportedAt,
+                'appName' => $appName,
+                'stats' => $stats,
+                'topRoutes' => $topRoutes,
+                'profiles' => array_slice($allProfiles, 0, 100),
+            ];
+
+            $html = view('digdeep::exports.dashboard', compact('data'))->render();
+            $filename = 'digdeep-dashboard-'.now()->format('Y-m-d-His').'.html';
+        } elseif ($template === 'performance') {
+            $allProfiles = $this->storage->all();
+            ['routes' => $routes, 'global' => $global] = $this->computeExportPerformance($allProfiles);
+
+            $data = [
+                'exportedAt' => $exportedAt,
+                'appName' => $appName,
+                'routes' => $routes,
+                'global' => $global,
+            ];
+
+            $html = view('digdeep::exports.performance', compact('data'))->render();
+            $filename = 'digdeep-performance-'.now()->format('Y-m-d-His').'.html';
+        } else {
+            $id = $request->input('id');
+
+            if (! $id) {
+                return response()->json(['error' => 'Profile ID required'], 400);
+            }
+
+            $profile = $this->storage->find($id);
+
+            if (! $profile) {
+                return response()->json(['error' => 'Profile not found'], 404);
+            }
+
+            $data = [
+                'exportedAt' => $exportedAt,
+                'appName' => $appName,
+                'profile' => $profile,
+            ];
+
+            $html = view('digdeep::exports.profile', compact('data'))->render();
+            $filename = 'digdeep-profile-'.now()->format('Y-m-d-His').'.html';
+        }
+
+        return response()->streamDownload(function () use ($html): void {
+            echo $html;
+        }, $filename, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $profiles
+     * @return array<string, mixed>
+     */
+    private function computeExportStats(array $profiles): array
+    {
+        $count = count($profiles);
+
+        if ($count === 0) {
+            return ['total' => 0, 'avg_duration' => 0, 'error_rate' => 0, 'success_rate' => 100, 'avg_memory' => 0, 'avg_queries' => 0];
+        }
+
+        $durations = array_map(fn ($p) => (float) $p['duration_ms'], $profiles);
+        $errors = count(array_filter($profiles, fn ($p) => (int) $p['status_code'] >= 400));
+        $memories = array_map(fn ($p) => (float) $p['memory_peak_mb'], $profiles);
+        $queries = array_map(fn ($p) => (int) $p['query_count'], $profiles);
+
+        return [
+            'total' => $count,
+            'avg_duration' => round(array_sum($durations) / $count, 1),
+            'error_rate' => round($errors / $count * 100, 1),
+            'success_rate' => round((1 - $errors / $count) * 100, 1),
+            'avg_memory' => round(array_sum($memories) / $count, 1),
+            'avg_queries' => round(array_sum($queries) / $count, 1),
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $profiles
+     * @return array<int, array<string, mixed>>
+     */
+    private function computeTopRoutes(array $profiles): array
+    {
+        $routeMap = [];
+
+        foreach ($profiles as $p) {
+            $key = $p['method'].' '.$p['url'];
+
+            if (! isset($routeMap[$key])) {
+                $routeMap[$key] = ['method' => $p['method'], 'url' => $p['url'], 'count' => 0, 'durations' => [], 'errors' => 0];
+            }
+
+            $routeMap[$key]['count']++;
+            $routeMap[$key]['durations'][] = (float) $p['duration_ms'];
+
+            if ((int) $p['status_code'] >= 400) {
+                $routeMap[$key]['errors']++;
+            }
+        }
+
+        $routes = array_map(fn ($r) => [
+            'method' => $r['method'],
+            'url' => $r['url'],
+            'count' => $r['count'],
+            'avg_duration' => round(array_sum($r['durations']) / count($r['durations']), 1),
+            'error_rate' => round($r['errors'] / $r['count'] * 100, 1),
+        ], array_values($routeMap));
+
+        usort($routes, fn ($a, $b) => $b['count'] <=> $a['count']);
+
+        return array_slice($routes, 0, 20);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $profiles
+     * @return array{routes: array<int, array<string, mixed>>, global: array<string, mixed>}
+     */
+    private function computeExportPerformance(array $profiles): array
+    {
+        $routeMap = [];
+        $allDurations = [];
+        $totalErrors = 0;
+
+        foreach ($profiles as $p) {
+            $key = $p['method'].' '.$p['url'];
+            $duration = (float) $p['duration_ms'];
+            $status = (int) $p['status_code'];
+            $allDurations[] = $duration;
+
+            if ($status >= 400) {
+                $totalErrors++;
+            }
+
+            if (! isset($routeMap[$key])) {
+                $routeMap[$key] = ['method' => $p['method'], 'url' => $p['url'], 'durations' => [], 'statuses' => [], 'queries' => [], 'memories' => [], 'timestamps' => []];
+            }
+
+            $routeMap[$key]['durations'][] = $duration;
+            $routeMap[$key]['statuses'][] = $status;
+            $routeMap[$key]['queries'][] = (int) $p['query_count'];
+            $routeMap[$key]['memories'][] = (float) $p['memory_peak_mb'];
+            $routeMap[$key]['timestamps'][] = $p['created_at'];
+        }
+
+        $routes = [];
+
+        foreach ($routeMap as $route) {
+            $durations = $route['durations'];
+            sort($durations);
+            $cnt = count($durations);
+            $errors = count(array_filter($route['statuses'], fn ($s) => $s >= 400));
+
+            $timestamps = $route['timestamps'];
+            sort($timestamps);
+            $spanMinutes = max((strtotime(end($timestamps)) - strtotime($timestamps[0])) / 60, 1);
+
+            $routes[] = [
+                'method' => $route['method'],
+                'url' => $route['url'],
+                'count' => $cnt,
+                'p50' => $this->percentile($durations, 0.50),
+                'p95' => $this->percentile($durations, 0.95),
+                'p99' => $this->percentile($durations, 0.99),
+                'avg_duration' => round(array_sum($durations) / $cnt, 1),
+                'throughput_rpm' => round($cnt / $spanMinutes, 1),
+                'error_rate' => round($errors / $cnt * 100, 1),
+                'avg_queries' => round(array_sum($route['queries']) / $cnt, 1),
+                'avg_memory' => round(array_sum($route['memories']) / $cnt, 1),
+            ];
+        }
+
+        usort($routes, fn ($a, $b) => $b['p95'] <=> $a['p95']);
+
+        $global = [];
+
+        if (count($allDurations) > 0) {
+            sort($allDurations);
+            $global = [
+                'total' => count($allDurations),
+                'p50' => $this->percentile($allDurations, 0.50),
+                'p95' => $this->percentile($allDurations, 0.95),
+                'p99' => $this->percentile($allDurations, 0.99),
+                'error_rate' => round($totalErrors / count($allDurations) * 100, 1),
+            ];
+        }
+
+        return ['routes' => $routes, 'global' => $global];
     }
 
     private function percentile(array $sorted, float $p): float

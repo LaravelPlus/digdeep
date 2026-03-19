@@ -1,8 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Collectors;
 
-class MiddlewareCollector
+final class MiddlewareCollector
 {
     /** @var array<int, array{name: string, duration_ms: float, is_estimated: bool}> */
     private array $middleware = [];

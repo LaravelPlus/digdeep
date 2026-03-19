@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
 
-class ThresholdExceeded
+final readonly class ThresholdExceeded
 {
     use Dispatchable;
 

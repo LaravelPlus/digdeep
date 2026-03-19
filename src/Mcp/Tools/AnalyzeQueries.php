@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Mcp\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -11,24 +13,27 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use LaravelPlus\DigDeep\Analyzers\QueryAnalyzer;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
+use Override;
+use Throwable;
 
 #[IsReadOnly]
 #[Description('Analyze queries from a profile for N+1 patterns, SELECT * usage, and missing indexes. Returns actionable optimization hints.')]
-class AnalyzeQueries extends Tool
+final class AnalyzeQueries extends Tool
 {
     public function __construct(private DigDeepStorage $storage) {}
 
+    #[Override]
     public function handle(Request $request): Response
     {
         $id = $request->get('id');
 
-        if (! $id) {
+        if (!$id) {
             return Response::error('The "id" parameter is required.');
         }
 
         $profile = $this->storage->find($id);
 
-        if (! $profile) {
+        if (!$profile) {
             return Response::error("Profile not found: {$id}");
         }
 
@@ -53,8 +58,9 @@ class AnalyzeQueries extends Tool
     }
 
     /**
-     * @return array<string, \Illuminate\Contracts\JsonSchema\JsonSchema>
+     * @return array<string, JsonSchema>
      */
+    #[Override]
     public function schema(JsonSchema $schema): array
     {
         return [
@@ -91,14 +97,14 @@ class AnalyzeQueries extends Tool
                     'columns' => collect($columns)->map(fn ($c) => [
                         'name' => $c->name,
                         'type' => $c->type,
-                        'nullable' => ! $c->notnull,
+                        'nullable' => !$c->notnull,
                         'pk' => (bool) $c->pk,
                         'default' => $c->dflt_value,
                     ])->all(),
                     'indexes' => $indexDetails,
                 ];
             }
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Schema introspection may fail on non-SQLite DBs
         }
 

@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Collectors;
 
 use Symfony\Component\HttpFoundation\Response;
 
-class InertiaCollector
+final class InertiaCollector
 {
     /** @var array<string, mixed> */
     private array $data = [];
@@ -78,7 +80,7 @@ class InertiaCollector
                 } elseif (is_array($value)) {
                     $result[$key] = $this->truncateProps($value, $maxDepth, $currentDepth + 1);
                 }
-            } elseif (is_string($value) && strlen($value) > 500) {
+            } elseif (is_string($value) && mb_strlen($value) > 500) {
                 $result[$key] = mb_substr($value, 0, 500).'... (truncated)';
             } else {
                 $result[$key] = $value;
@@ -104,10 +106,10 @@ class InertiaCollector
             } elseif (is_object($value)) {
                 $summary[$key] = get_class($value);
             } elseif (is_string($value)) {
-                $summary[$key] = 'string('.strlen($value).')';
+                $summary[$key] = 'string('.mb_strlen($value).')';
             } elseif (is_bool($value)) {
                 $summary[$key] = $value ? 'true' : 'false';
-            } elseif (is_null($value)) {
+            } elseif (null === $value) {
                 $summary[$key] = 'null';
             } else {
                 $summary[$key] = (string) $value;

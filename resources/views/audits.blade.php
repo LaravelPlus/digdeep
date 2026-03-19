@@ -3,12 +3,24 @@
 @section('title', 'Audits')
 
 @section('content')
+@php
+    $durationThreshold  = (int) config('digdeep.thresholds.duration_ms', 500);
+    $queryCountThreshold = (int) config('digdeep.thresholds.query_count', 20);
+@endphp
+
 <div id="digdeep-audits" v-cloak>
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-xl font-bold text-drac-fg tracking-tight">Route Audits</h1>
-            <p class="text-drac-comment text-xs mt-1">Performance and reliability analysis per route.</p>
+            <p class="text-drac-comment text-xs mt-1">Per-route health scores across all captured profiles.</p>
         </div>
+        @if(!empty($routeAudits))
+        <div class="flex items-center gap-2">
+            <button @click="filter = 'all'"    :class="filter === 'all'    ? 'bg-drac-current text-drac-fg' : 'text-drac-comment hover:text-drac-fg'" class="text-xs font-semibold px-3 py-1.5 rounded-lg transition">All</button>
+            <button @click="filter = 'issues'" :class="filter === 'issues' ? 'bg-drac-current text-drac-fg' : 'text-drac-comment hover:text-drac-fg'" class="text-xs font-semibold px-3 py-1.5 rounded-lg transition">Issues only</button>
+            <button @click="filter = 'pass'"   :class="filter === 'pass'   ? 'bg-drac-current text-drac-fg' : 'text-drac-comment hover:text-drac-fg'" class="text-xs font-semibold px-3 py-1.5 rounded-lg transition">Passing</button>
+        </div>
+        @endif
     </div>
 
     @if(empty($routeAudits))
@@ -21,105 +33,123 @@
         </div>
     @else
         @php
-            $totalRequests = array_sum(array_column($routeAudits, 'count'));
-            $avgDuration = count($routeAudits) > 0 ? array_sum(array_column($routeAudits, 'avg_duration')) / count($routeAudits) : 0;
-            $maxDuration = max(array_column($routeAudits, 'max_duration'));
-            $errorRoutes = count(array_filter($routeAudits, fn($a) => $a['error_rate'] > 0));
+            $totalRequests  = array_sum(array_column($routeAudits, 'count'));
+            $avgScore       = count($routeAudits) > 0 ? round(array_sum(array_column($routeAudits, 'score')) / count($routeAudits)) : 100;
+            $criticalRoutes = count(array_filter($routeAudits, fn($a) => $a['score'] < 50));
+            $warningRoutes  = count(array_filter($routeAudits, fn($a) => $a['score'] >= 50 && $a['score'] < 80));
+            $passingRoutes  = count(array_filter($routeAudits, fn($a) => $a['score'] >= 80));
+            $avgScoreColor  = $avgScore >= 80 ? 'text-drac-green' : ($avgScore >= 50 ? 'text-drac-orange' : 'text-drac-red');
         @endphp
 
-        {{-- Stats cards --}}
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        {{-- Summary cards --}}
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
             <div class="bg-drac-surface rounded-xl border border-drac-border p-4">
-                <div class="flex items-center justify-between mb-2.5">
-                    <div class="text-drac-comment text-[10px] uppercase tracking-wider font-semibold">Routes Audited</div>
-                    <div class="w-7 h-7 rounded-lg bg-drac-purple/10 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-drac-purple" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/></svg>
-                    </div>
-                </div>
+                <div class="text-drac-comment text-[10px] uppercase tracking-wider font-semibold mb-1.5">Avg Score</div>
+                <div class="text-2xl font-extrabold {{ $avgScoreColor }} leading-none">{{ $avgScore }}<span class="text-xs text-drac-comment font-semibold ml-0.5">/100</span></div>
+            </div>
+            <div class="bg-drac-surface rounded-xl border border-drac-border p-4">
+                <div class="text-drac-comment text-[10px] uppercase tracking-wider font-semibold mb-1.5">Routes Audited</div>
                 <div class="text-2xl font-extrabold text-drac-fg leading-none">{{ count($routeAudits) }}</div>
-                <div class="text-drac-comment text-[10px] font-medium mt-2">{{ $totalRequests }} total requests</div>
+                <div class="text-drac-comment text-[10px] mt-1.5">{{ $totalRequests }} total requests</div>
             </div>
             <div class="bg-drac-surface rounded-xl border border-drac-border p-4">
-                <div class="flex items-center justify-between mb-2.5">
-                    <div class="text-drac-comment text-[10px] uppercase tracking-wider font-semibold">Avg Response</div>
-                    <div class="w-7 h-7 rounded-lg bg-drac-green/10 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-drac-green" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </div>
-                </div>
-                <div class="text-2xl font-extrabold {{ $avgDuration < 200 ? 'text-drac-green' : ($avgDuration < 500 ? 'text-drac-orange' : 'text-drac-red') }} leading-none">{{ number_format($avgDuration, 0) }}<span class="text-xs text-drac-comment font-semibold ml-0.5">ms</span></div>
+                <div class="text-drac-comment text-[10px] uppercase tracking-wider font-semibold mb-1.5">Critical</div>
+                <div class="text-2xl font-extrabold {{ $criticalRoutes > 0 ? 'text-drac-red' : 'text-drac-comment' }} leading-none">{{ $criticalRoutes }}</div>
+                <div class="text-drac-comment text-[10px] mt-1.5">score &lt; 50</div>
             </div>
             <div class="bg-drac-surface rounded-xl border border-drac-border p-4">
-                <div class="flex items-center justify-between mb-2.5">
-                    <div class="text-drac-comment text-[10px] uppercase tracking-wider font-semibold">Slowest</div>
-                    <div class="w-7 h-7 rounded-lg bg-drac-red/10 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-drac-red" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </div>
-                </div>
-                <div class="text-2xl font-extrabold text-drac-red leading-none">{{ number_format($maxDuration, 0) }}<span class="text-xs text-drac-comment font-semibold ml-0.5">ms</span></div>
+                <div class="text-drac-comment text-[10px] uppercase tracking-wider font-semibold mb-1.5">Warning</div>
+                <div class="text-2xl font-extrabold {{ $warningRoutes > 0 ? 'text-drac-orange' : 'text-drac-comment' }} leading-none">{{ $warningRoutes }}</div>
+                <div class="text-drac-comment text-[10px] mt-1.5">score 50–79</div>
             </div>
             <div class="bg-drac-surface rounded-xl border border-drac-border p-4">
-                <div class="flex items-center justify-between mb-2.5">
-                    <div class="text-drac-comment text-[10px] uppercase tracking-wider font-semibold">Routes w/ Errors</div>
-                    <div class="w-7 h-7 rounded-lg bg-drac-orange/10 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-drac-orange" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
-                    </div>
-                </div>
-                <div class="text-2xl font-extrabold {{ $errorRoutes > 0 ? 'text-drac-orange' : 'text-drac-green' }} leading-none">{{ $errorRoutes }}</div>
+                <div class="text-drac-comment text-[10px] uppercase tracking-wider font-semibold mb-1.5">Passing</div>
+                <div class="text-2xl font-extrabold {{ $passingRoutes > 0 ? 'text-drac-green' : 'text-drac-comment' }} leading-none">{{ $passingRoutes }}</div>
+                <div class="text-drac-comment text-[10px] mt-1.5">score ≥ 80</div>
             </div>
         </div>
 
-        {{-- Audit cards --}}
+        {{-- Route list --}}
         <div class="space-y-2">
             @foreach($routeAudits as $audit)
             @php
-                $durationPct = $maxDuration > 0 ? ($audit['avg_duration'] / $maxDuration) * 100 : 0;
-                $perfColor = $audit['avg_duration'] < 200 ? 'drac-green' : ($audit['avg_duration'] < 500 ? 'drac-orange' : 'drac-red');
+                $score      = $audit['score'];
+                $scoreColor = $score >= 80 ? 'text-drac-green' : ($score >= 50 ? 'text-drac-orange' : 'text-drac-red');
+                $scoreBg    = $score >= 80 ? 'bg-drac-green/10' : ($score >= 50 ? 'bg-drac-orange/10' : 'bg-drac-red/10');
+                $failedChecks = array_values(array_filter($audit['checks'], fn($c) => !$c['pass']));
+                $maxDuration = max(array_column(array_values($routeAudits), 'max_duration'));
+                $barPct      = $maxDuration > 0 ? ($audit['avg_duration'] / $maxDuration) * 100 : 0;
+                $barColor    = $audit['avg_duration'] <= $durationThreshold ? 'bg-drac-green' : ($audit['avg_duration'] <= $durationThreshold * 2 ? 'bg-drac-orange' : 'bg-drac-red');
             @endphp
-            <div class="bg-drac-surface rounded-xl border border-drac-border overflow-hidden hover:border-drac-comment/40 transition">
+            <div v-show="filter === 'all' || (filter === 'issues' && {{ count($failedChecks) > 0 ? 'true' : 'false' }}) || (filter === 'pass' && {{ count($failedChecks) === 0 ? 'true' : 'false' }})"
+                 class="bg-drac-surface rounded-xl border {{ count($failedChecks) > 0 ? 'border-drac-border' : 'border-drac-border' }} overflow-hidden hover:border-drac-comment/40 transition">
                 <div class="px-5 py-3.5">
+                    {{-- Route header row --}}
                     <div class="flex items-center gap-3 mb-3">
-                        <span class="inline-flex items-center justify-center w-[48px] shrink-0 py-0.5 rounded-md text-[10px] font-bold tracking-wide
-                            {{ $audit['method'] === 'GET' ? 'bg-drac-green/10 text-drac-green' : '' }}
-                            {{ $audit['method'] === 'POST' ? 'bg-drac-cyan/10 text-drac-cyan' : '' }}
-                            {{ in_array($audit['method'], ['PUT', 'PATCH']) ? 'bg-drac-orange/10 text-drac-orange' : '' }}
-                            {{ $audit['method'] === 'DELETE' ? 'bg-drac-red/10 text-drac-red' : '' }}
+                        {{-- Score badge --}}
+                        <div class="w-10 h-10 rounded-xl {{ $scoreBg }} flex items-center justify-center flex-shrink-0">
+                            <span class="text-sm font-extrabold {{ $scoreColor }}">{{ $score }}</span>
+                        </div>
+                        {{-- Method + URL --}}
+                        <span class="inline-flex items-center justify-center w-12 shrink-0 py-0.5 rounded-md text-[10px] font-bold tracking-wide
+                            {{ $audit['method'] === 'GET'    ? 'bg-drac-green/10 text-drac-green'   : '' }}
+                            {{ $audit['method'] === 'POST'   ? 'bg-drac-cyan/10 text-drac-cyan'     : '' }}
+                            {{ in_array($audit['method'], ['PUT','PATCH']) ? 'bg-drac-orange/10 text-drac-orange' : '' }}
+                            {{ $audit['method'] === 'DELETE' ? 'bg-drac-red/10 text-drac-red'       : '' }}
                         ">{{ $audit['method'] }}</span>
                         <span class="text-drac-fg font-mono text-sm font-medium truncate flex-1 min-w-0">{{ $audit['url'] }}</span>
+                        {{-- Counts --}}
                         <span class="text-drac-purple text-xs font-extrabold shrink-0">{{ $audit['count'] }} <span class="text-drac-comment font-medium">req</span></span>
                         @if($audit['error_rate'] > 0)
-                        <span class="bg-drac-red/10 text-drac-red text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">{{ $audit['error_rate'] }}% err</span>
+                            <span class="bg-drac-red/10 text-drac-red text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">{{ $audit['error_rate'] }}% err</span>
                         @endif
+                        {{-- Status codes --}}
                         <div class="flex items-center gap-1 shrink-0">
-                            @foreach($audit['statuses'] as $status)
+                            @foreach($audit['statuses'] as $s)
                             <span class="text-[10px] font-bold px-1.5 py-0.5 rounded
-                                {{ $status < 300 ? 'bg-drac-green/10 text-drac-green' : '' }}
-                                {{ $status >= 300 && $status < 400 ? 'bg-drac-orange/10 text-drac-orange' : '' }}
-                                {{ $status >= 400 ? 'bg-drac-red/10 text-drac-red' : '' }}
-                            ">{{ $status }}</span>
+                                {{ $s < 300 ? 'bg-drac-green/10 text-drac-green' : '' }}
+                                {{ $s >= 300 && $s < 400 ? 'bg-drac-yellow/10 text-drac-yellow' : '' }}
+                                {{ $s >= 400 ? 'bg-drac-red/10 text-drac-red' : '' }}
+                            ">{{ $s }}</span>
                             @endforeach
                         </div>
                     </div>
-                    {{-- Duration range visualization --}}
-                    <div class="flex items-center gap-3">
+
+                    {{-- Duration bar --}}
+                    <div class="flex items-center gap-3 mb-3">
                         <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1.5">
-                                <div class="flex-1 bg-drac-current rounded-full h-1.5 relative overflow-hidden">
-                                    {{-- Min-max range --}}
-                                    @php
-                                        $minPct = $maxDuration > 0 ? ($audit['min_duration'] / $maxDuration) * 100 : 0;
-                                        $maxPct = $maxDuration > 0 ? ($audit['max_duration'] / $maxDuration) * 100 : 0;
-                                    @endphp
-                                    <div class="absolute h-full bg-{{ $perfColor }}/20 rounded-full" style="left: {{ $minPct }}%; width: {{ max(1, $maxPct - $minPct) }}%"></div>
-                                    <div class="dd-bar h-full rounded-full bg-{{ $perfColor }}" style="width: {{ $durationPct }}%"></div>
-                                </div>
+                            <div class="flex-1 bg-drac-current rounded-full h-1.5 overflow-hidden">
+                                <div class="{{ $barColor }} h-full rounded-full" style="width: {{ $barPct }}%"></div>
                             </div>
-                            <div class="flex items-center gap-4 text-[10px]">
+                            <div class="flex items-center gap-4 text-[10px] mt-1.5">
                                 <span class="text-drac-comment">Min <span class="text-drac-cyan font-bold">{{ $audit['min_duration'] }}ms</span></span>
-                                <span class="text-drac-comment">Avg <span class="text-{{ $perfColor }} font-bold">{{ $audit['avg_duration'] }}ms</span></span>
+                                <span class="text-drac-comment">Avg <span class="{{ $audit['avg_duration'] <= $durationThreshold ? 'text-drac-green' : ($audit['avg_duration'] <= $durationThreshold * 2 ? 'text-drac-orange' : 'text-drac-red') }} font-bold">{{ $audit['avg_duration'] }}ms</span></span>
+                                <span class="text-drac-comment">P95 <span class="text-drac-fg font-bold">{{ $audit['p95_duration'] }}ms</span></span>
                                 <span class="text-drac-comment">Max <span class="text-drac-fg font-bold">{{ $audit['max_duration'] }}ms</span></span>
-                                <span class="text-drac-comment ml-auto">Avg Queries <span class="text-drac-yellow font-bold">{{ $audit['avg_queries'] }}</span></span>
+                                <span class="text-drac-comment ml-auto">Avg queries <span class="text-drac-yellow font-bold">{{ $audit['avg_queries'] }}</span></span>
                             </div>
                         </div>
+                    </div>
+
+                    {{-- Audit checks --}}
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach($audit['checks'] as $check)
+                        @php
+                            $cPass = $check['pass'];
+                            $cSev  = $check['severity'];
+                            $chipColor = $cPass
+                                ? 'bg-drac-green/10 text-drac-green border-drac-green/20'
+                                : ($cSev === 'critical' ? 'bg-drac-red/10 text-drac-red border-drac-red/20' : 'bg-drac-orange/10 text-drac-orange border-drac-orange/20');
+                        @endphp
+                        <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border {{ $chipColor }}">
+                            @if($cPass)
+                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                            @else
+                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            @endif
+                            {{ $check['label'] }}
+                        </span>
+                        @endforeach
                     </div>
                 </div>
             </div>
@@ -130,6 +160,8 @@
 
 <script>
 const { createApp } = Vue;
-createApp({}).mount('#digdeep-audits');
+createApp({
+    data() { return { filter: 'all' }; },
+}).mount('#digdeep-audits');
 </script>
 @endsection

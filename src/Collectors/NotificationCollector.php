@@ -1,19 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Collectors;
 
 use Illuminate\Notifications\Events\NotificationSending;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\Event;
 
-class NotificationCollector
+final class NotificationCollector
 {
     /** @var array<int, array{notification: string, notifiable: string, channel: string, sent: bool}> */
     private array $notifications = [];
 
     public function listen(): void
     {
-        Event::listen(NotificationSending::class, function (NotificationSending $event) {
+        Event::listen(NotificationSending::class, function (NotificationSending $event): void {
             $notifiable = get_class($event->notifiable);
 
             if (method_exists($event->notifiable, 'getKey')) {
@@ -28,18 +30,19 @@ class NotificationCollector
             ];
         });
 
-        Event::listen(NotificationSent::class, function (NotificationSent $event) {
+        Event::listen(NotificationSent::class, function (NotificationSent $event): void {
             $notificationClass = get_class($event->notification);
             $channel = $event->channel;
 
-            for ($i = count($this->notifications) - 1; $i >= 0; $i--) {
-                if ($this->notifications[$i]['notification'] === $notificationClass
-                    && $this->notifications[$i]['channel'] === $channel
-                    && ! $this->notifications[$i]['sent']) {
-                    $this->notifications[$i]['sent'] = true;
+            $index = array_find_key(
+                array_reverse($this->notifications, preserve_keys: true),
+                fn ($n) => $n['notification'] === $notificationClass
+                    && $n['channel'] === $channel
+                    && !$n['sent'],
+            );
 
-                    break;
-                }
+            if ($index !== null) {
+                $this->notifications[$index]['sent'] = true;
             }
         });
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Controllers;
 
 use Illuminate\Routing\Controller;
@@ -8,8 +10,9 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\View\View;
 use LaravelPlus\DigDeep\Analyzers\QueryAnalyzer;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
+use Throwable;
 
-class DashboardController extends Controller
+final class DashboardController extends Controller
 {
     public function __construct(private DigDeepStorage $storage) {}
 
@@ -35,7 +38,7 @@ class DashboardController extends Controller
     {
         $profile = $this->storage->find($id);
 
-        if (! $profile) {
+        if (!$profile) {
             abort(404, 'Profile not found');
         }
 
@@ -67,7 +70,7 @@ class DashboardController extends Controller
             }
 
             $methods = array_filter($route->methods(), fn ($m) => $m !== 'HEAD');
-            $normalizedUri = '/'.ltrim($uri, '/');
+            $normalizedUri = '/'.mb_ltrim($uri, '/');
 
             // Build regex pattern from URI for matching parameterized routes
             $quotedUri = preg_quote($normalizedUri, '#');
@@ -96,10 +99,10 @@ class DashboardController extends Controller
         foreach ($registeredRoutes as $key => $rr) {
             $uriIndex[$key] = $key; // key is already "METHOD /uri"
 
-            if (! empty($rr['name'])) {
+            if (!empty($rr['name'])) {
                 $nameIndex[$rr['method'].':'.$rr['name']] = $key;
             }
-            if (! empty($rr['action'])) {
+            if (!empty($rr['action'])) {
                 $actionIndex[$rr['method'].':'.$rr['action']] = $key;
             }
             $patternIndex[$rr['method']][] = ['pattern' => $rr['pattern'], 'key' => $key];
@@ -112,7 +115,7 @@ class DashboardController extends Controller
             $routeName = $data['route']['name'] ?? null;
             $routeAction = $data['route']['action'] ?? null;
             $lifecycle = $data['lifecycle'] ?? [];
-            $hasLifecycle = ! empty($lifecycle) && ! empty($lifecycle['phases']);
+            $hasLifecycle = !empty($lifecycle) && !empty($lifecycle['phases']);
 
             $profileEntry = [
                 'id' => $p['id'],
@@ -232,14 +235,11 @@ class DashboardController extends Controller
 
             if (in_array($p['method'], ['POST', 'PUT', 'PATCH', 'DELETE'])) {
                 $middleware = $data['route']['middleware'] ?? [];
-                $hasVerifyCsrf = false;
-                foreach ($middleware as $mw) {
-                    if (is_string($mw) && str_contains(strtolower($mw), 'csrf')) {
-                        $hasVerifyCsrf = true;
-                        break;
-                    }
-                }
-                if (! $hasVerifyCsrf) {
+                $hasVerifyCsrf = array_any(
+                    $middleware,
+                    fn ($mw) => is_string($mw) && str_contains(mb_strtolower($mw), 'csrf'),
+                );
+                if (!$hasVerifyCsrf) {
                     $securityIssues[] = [
                         'type' => 'warning',
                         'category' => 'CSRF',
@@ -250,7 +250,7 @@ class DashboardController extends Controller
             }
 
             $responseHeaders = $data['response']['headers'] ?? [];
-            if (! isset($responseHeaders['x-content-type-options'])) {
+            if (!isset($responseHeaders['x-content-type-options'])) {
                 $securityIssues[] = [
                     'type' => 'info',
                     'category' => 'Headers',
@@ -293,7 +293,7 @@ class DashboardController extends Controller
         $routeAudits = [];
         foreach ($profiles as $p) {
             $key = $p['method'].' '.$p['url'];
-            if (! isset($routeAudits[$key])) {
+            if (!isset($routeAudits[$key])) {
                 $routeAudits[$key] = [
                     'method' => $p['method'],
                     'url' => $p['url'],
@@ -314,18 +314,42 @@ class DashboardController extends Controller
             $routeAudits[$key]['statuses'][] = (int) $p['status_code'];
         }
 
+        $durationThreshold  = (int) config('digdeep.thresholds.duration_ms', 500);
+        $queryCountThreshold = (int) config('digdeep.thresholds.query_count', 20);
+        $memoryThreshold    = (float) config('digdeep.thresholds.memory_peak_mb', 64);
+        $queryTimeThreshold = (float) config('digdeep.thresholds.query_time_ms', 200);
+
         foreach ($routeAudits as &$audit) {
             $audit['avg_duration'] = round(array_sum($audit['durations']) / count($audit['durations']), 1);
             $audit['min_duration'] = round(min($audit['durations']), 1);
             $audit['max_duration'] = round(max($audit['durations']), 1);
-            $audit['avg_queries'] = round(array_sum($audit['queries']) / count($audit['queries']), 1);
-            $audit['error_rate'] = round(count(array_filter($audit['statuses'], fn ($s) => $s >= 400)) / count($audit['statuses']) * 100);
+            $audit['p95_duration'] = $this->percentile($audit['durations'], 0.95);
+            $audit['avg_queries']  = round(array_sum($audit['queries']) / count($audit['queries']), 1);
+            $audit['max_queries']  = max($audit['queries']);
+            $audit['error_rate']   = round(count(array_filter($audit['statuses'], fn ($s) => $s >= 400)) / count($audit['statuses']) * 100);
             unset($audit['durations'], $audit['queries']);
             $audit['statuses'] = array_unique($audit['statuses']);
             sort($audit['statuses']);
+
+            // Per-route audit checks
+            $checks = [
+                ['key' => 'response_time', 'label' => 'Avg response ≤ '.$durationThreshold.'ms',   'pass' => $audit['avg_duration'] <= $durationThreshold,   'severity' => $audit['avg_duration'] > $durationThreshold * 2 ? 'critical' : 'warning'],
+                ['key' => 'p95_time',      'label' => 'P95 ≤ '.($durationThreshold * 1.5).'ms',    'pass' => $audit['p95_duration'] <= $durationThreshold * 1.5, 'severity' => 'warning'],
+                ['key' => 'query_count',   'label' => 'Avg queries ≤ '.$queryCountThreshold,       'pass' => $audit['avg_queries'] <= $queryCountThreshold,   'severity' => 'warning'],
+                ['key' => 'error_rate',    'label' => 'No errors (0% error rate)',                  'pass' => $audit['error_rate'] === 0.0,                    'severity' => 'critical'],
+            ];
+
+            $score = 100;
+            foreach ($checks as $check) {
+                if (!$check['pass']) {
+                    $score -= $check['severity'] === 'critical' ? 25 : 15;
+                }
+            }
+            $audit['score']  = max(0, $score);
+            $audit['checks'] = $checks;
         }
 
-        uasort($routeAudits, fn ($a, $b) => $b['count'] <=> $a['count']);
+        uasort($routeAudits, fn ($a, $b) => $a['score'] <=> $b['score']);
 
         return view('digdeep::audits', compact('routeAudits', 'currentSection'));
     }
@@ -341,12 +365,12 @@ class DashboardController extends Controller
     public function errors(): View
     {
         $currentSection = 'errors';
-        $profiles = $this->storage->allWithData();
+        $profiles = $this->storage->allErrorsWithData();
 
         $errors = [];
         foreach ($profiles as $p) {
             $exception = $p['data']['exception'] ?? null;
-            if (! $exception) {
+            if (!$exception) {
                 continue;
             }
 
@@ -370,7 +394,7 @@ class DashboardController extends Controller
         $errorsByClass = [];
         foreach ($errors as $err) {
             $class = $err['class'];
-            if (! isset($errorsByClass[$class])) {
+            if (!isset($errorsByClass[$class])) {
                 $errorsByClass[$class] = [
                     'class' => $class,
                     'count' => 0,
@@ -409,8 +433,8 @@ class DashboardController extends Controller
         foreach ($profiles as $p) {
             foreach ($p['data']['queries'] ?? [] as $q) {
                 $allQueries[] = $q;
-                $sql = trim($q['sql']);
-                $upper = strtoupper($sql);
+                $sql = mb_trim($q['sql']);
+                $upper = mb_strtoupper($sql);
                 $timems = (float) $q['time_ms'];
                 $totalTime += $timems;
 
@@ -426,8 +450,8 @@ class DashboardController extends Controller
                 // Extract table names
                 if (preg_match_all('/\b(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+[`"]?(\w+)[`"]?/i', $sql, $matches)) {
                     foreach ($matches[1] as $table) {
-                        $table = strtolower($table);
-                        if (! isset($tableAccess[$table])) {
+                        $table = mb_strtolower($table);
+                        if (!isset($tableAccess[$table])) {
                             $tableAccess[$table] = ['reads' => 0, 'writes' => 0, 'total_time' => 0];
                         }
                         if (str_starts_with($upper, 'SELECT') || str_starts_with($upper, 'PRAGMA')) {
@@ -464,6 +488,11 @@ class DashboardController extends Controller
         try {
             $tables = DB::select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
             foreach ($tables as $table) {
+                // Validate table name contains only safe identifier characters before embedding in PRAGMA
+                if (!preg_match('/^\w+$/', $table->name)) {
+                    continue;
+                }
+
                 $columns = DB::select("PRAGMA table_info(\"{$table->name}\")");
                 $indexes = DB::select("PRAGMA index_list(\"{$table->name}\")");
                 $fks = DB::select("PRAGMA foreign_key_list(\"{$table->name}\")");
@@ -472,6 +501,10 @@ class DashboardController extends Controller
                 // Get index details (columns per index)
                 $indexDetails = [];
                 foreach ($indexes as $idx) {
+                    if (!preg_match('/^\w+$/', $idx->name)) {
+                        continue;
+                    }
+
                     $idxCols = DB::select("PRAGMA index_info(\"{$idx->name}\")");
                     $indexDetails[] = [
                         'name' => $idx->name,
@@ -485,7 +518,7 @@ class DashboardController extends Controller
                     'columns' => collect($columns)->map(fn ($c) => [
                         'name' => $c->name,
                         'type' => $c->type,
-                        'nullable' => ! $c->notnull,
+                        'nullable' => !$c->notnull,
                         'pk' => (bool) $c->pk,
                         'default' => $c->dflt_value,
                     ])->all(),
@@ -502,7 +535,7 @@ class DashboardController extends Controller
                     'row_count' => $count,
                 ];
             }
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Schema introspection may fail on non-SQLite DBs, that's fine
         }
 
@@ -553,7 +586,7 @@ class DashboardController extends Controller
             $duration = (float) $p['duration_ms'];
             $status = (int) $p['status_code'];
 
-            if (! isset($routeMap[$key])) {
+            if (!isset($routeMap[$key])) {
                 $routeMap[$key] = [
                     'method' => $p['method'],
                     'url' => $p['url'],
@@ -655,6 +688,14 @@ class DashboardController extends Controller
         return round($sorted[max(0, $idx)], 1);
     }
 
+    public function exportView(): View
+    {
+        $profiles = $this->storage->all();
+        $currentSection = 'export';
+
+        return view('digdeep::export', compact('profiles', 'currentSection'));
+    }
+
     public function cache(): View
     {
         $currentSection = 'cache';
@@ -696,7 +737,7 @@ class DashboardController extends Controller
                     $prefix = explode('.', $key)[0];
                 }
 
-                if (! isset($keyPatterns[$prefix])) {
+                if (!isset($keyPatterns[$prefix])) {
                     $keyPatterns[$prefix] = ['hits' => 0, 'misses' => 0, 'writes' => 0, 'total' => 0];
                 }
                 $keyPatterns[$prefix]['total']++;

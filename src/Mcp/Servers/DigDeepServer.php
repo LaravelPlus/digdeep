@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Mcp\Servers;
 
 use Laravel\Mcp\Server;
@@ -38,9 +40,9 @@ Available resources:
 
 Use list-profiles or get-stats first to understand the application's performance profile, then drill into specific profiles with get-profile or analyze-queries.
 MARKDOWN)]
-class DigDeepServer extends Server
+final class DigDeepServer extends Server
 {
-    /** @var array<int, class-string<\Laravel\Mcp\Server\Tool>> */
+    /** @var array<int, class-string<Server\Tool>> */
     protected array $tools = [
         ListProfiles::class,
         GetProfile::class,
@@ -52,12 +54,12 @@ class DigDeepServer extends Server
         GetSlowestRoutes::class,
     ];
 
-    /** @var array<int, class-string<\Laravel\Mcp\Server\Resource>> */
+    /** @var array<int, class-string<Server\Resource>> */
     protected array $resources = [
         DigDeepOverview::class,
         DigDeepConfig::class,
     ];
 
-    /** @var array<int, class-string<\Laravel\Mcp\Server\Prompt>> */
+    /** @var array<int, class-string<Server\Prompt>> */
     protected array $prompts = [];
 }

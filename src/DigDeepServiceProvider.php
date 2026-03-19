@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep;
 
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\ServiceProvider;
-use Laravel\Mcp\Facades\Mcp;
 use LaravelPlus\DigDeep\Commands\ClearCommand;
 use LaravelPlus\DigDeep\Commands\PruneCommand;
 use LaravelPlus\DigDeep\Commands\StatusCommand;
@@ -12,28 +13,26 @@ use LaravelPlus\DigDeep\Mcp\Servers\DigDeepServer;
 use LaravelPlus\DigDeep\Middleware\ProfileRequest;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
 
-class DigDeepServiceProvider extends ServiceProvider
+final class DigDeepServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/digdeep.php', 'digdeep');
 
-        if (! $this->isEnabled()) {
+        if (!$this->isEnabled()) {
             return;
         }
 
-        $this->app->singleton(DigDeepStorage::class, function () {
-            return new DigDeepStorage(
-                config('digdeep.max_profiles'),
-            );
-        });
+        $this->app->singleton(DigDeepStorage::class, fn () => new DigDeepStorage(
+            config('digdeep.max_profiles'),
+        ));
 
         $this->app->singleton(DigDeepCollector::class);
     }
 
     public function boot(): void
     {
-        if (! $this->isEnabled()) {
+        if (!$this->isEnabled()) {
             return;
         }
 
@@ -64,8 +63,8 @@ class DigDeepServiceProvider extends ServiceProvider
         }
 
         // Register MCP server if laravel/mcp is installed
-        if (class_exists(Mcp::class)) {
-            Mcp::local('digdeep', DigDeepServer::class);
+        if (class_exists(\Laravel\Mcp\Facades\Mcp::class)) {
+            \Laravel\Mcp\Facades\Mcp::local('digdeep', DigDeepServer::class);
         }
     }
 
@@ -73,14 +72,11 @@ class DigDeepServiceProvider extends ServiceProvider
     {
         $enabled = config('digdeep.enabled');
 
-        if ($enabled === false) {
-            return false;
+        // null means unconfigured — fall back to environment detection
+        if ($enabled === null) {
+            return $this->app->environment('local', 'testing');
         }
 
-        if ($enabled === true) {
-            return true;
-        }
-
-        return $this->app->environment('local', 'testing');
+        return (bool) $enabled;
     }
 }

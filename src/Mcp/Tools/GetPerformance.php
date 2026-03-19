@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Mcp\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -9,11 +11,13 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use LaravelPlus\DigDeep\Models\DigDeepProfile;
+use Override;
 
 #[IsReadOnly]
 #[Description('Get per-route performance metrics: P50/P95/P99 latency percentiles, throughput (RPM), error rates, and average queries/memory. Also returns global application-wide metrics.')]
-class GetPerformance extends Tool
+final class GetPerformance extends Tool
 {
+    #[Override]
     public function handle(Request $request): Response
     {
         $range = $request->get('range', 'all');
@@ -48,8 +52,9 @@ class GetPerformance extends Tool
     }
 
     /**
-     * @return array<string, \Illuminate\Contracts\JsonSchema\JsonSchema>
+     * @return array<string, JsonSchema>
      */
+    #[Override]
     public function schema(JsonSchema $schema): array
     {
         return [
@@ -68,7 +73,7 @@ class GetPerformance extends Tool
         foreach ($profiles as $p) {
             $key = $p['method'] . ' ' . $p['url'];
 
-            if (! isset($routeMap[$key])) {
+            if (!isset($routeMap[$key])) {
                 $routeMap[$key] = [
                     'method' => $p['method'],
                     'url' => $p['url'],

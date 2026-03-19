@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Mcp\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -12,24 +14,27 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 use LaravelPlus\DigDeep\DigDeepCollector;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
+use Override;
+use Throwable;
 
 #[IsDestructive]
 #[Description('Trigger on-demand profiling of a URL by making a sub-request. Returns the profile ID and summary metrics.')]
-class ProfileUrl extends Tool
+final class ProfileUrl extends Tool
 {
     public function __construct(private DigDeepStorage $storage) {}
 
+    #[Override]
     public function handle(Request $request): Response
     {
         $url = $request->get('url');
 
-        if (! $url) {
+        if (!$url) {
             return Response::error('The "url" parameter is required.');
         }
 
-        $method = strtoupper($request->get('method', 'GET'));
+        $method = mb_strtoupper($request->get('method', 'GET'));
 
-        $collector = new DigDeepCollector;
+        $collector = new DigDeepCollector();
         $collector->startRequest();
 
         $httpRequest = HttpRequest::create($url, $method);
@@ -41,7 +46,7 @@ class ProfileUrl extends Tool
             $collector->setResponse(
                 $httpResponse->getStatusCode(),
                 $httpResponse->headers->all(),
-                strlen($httpResponse->getContent() ?: ''),
+                mb_strlen($httpResponse->getContent() ?: ''),
                 mb_substr($httpResponse->getContent() ?: '', 0, 1024),
             );
 
@@ -55,7 +60,7 @@ class ProfileUrl extends Tool
                 ];
             }
             $collector->setRoute($routeData);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $collector->setException($e);
             $collector->setResponse(500, [], 0, '');
             $collector->setRoute([]);
@@ -80,8 +85,9 @@ class ProfileUrl extends Tool
     }
 
     /**
-     * @return array<string, \Illuminate\Contracts\JsonSchema\JsonSchema>
+     * @return array<string, JsonSchema>
      */
+    #[Override]
     public function schema(JsonSchema $schema): array
     {
         return [

@@ -1,16 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Collectors;
 
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Facades\Event;
 
-class LifecycleCollector
+final class LifecycleCollector
 {
-    private float $requestStart;
-
-    private float $appStart;
-
     private ?float $routeMatched = null;
 
     private ?float $middlewareDone = null;
@@ -19,8 +17,6 @@ class LifecycleCollector
 
     /** @var array<int, float> */
     private array $viewTimestamps = [];
-
-    private int $appStartMemory;
 
     private ?int $routeMatchedMemory = null;
 
@@ -31,21 +27,20 @@ class LifecycleCollector
     /** @var array<int, int> */
     private array $viewMemorySnapshots = [];
 
-    public function __construct(float $requestStart, float $appStart, int $appStartMemory)
-    {
-        $this->requestStart = $requestStart;
-        $this->appStart = $appStart;
-        $this->appStartMemory = $appStartMemory;
-    }
+    public function __construct(
+        private readonly float $requestStart,
+        private readonly float $appStart,
+        private readonly int $appStartMemory,
+    ) {}
 
     public function listen(): void
     {
-        Event::listen(RouteMatched::class, function () {
+        Event::listen(RouteMatched::class, function (): void {
             $this->routeMatched = microtime(true);
             $this->routeMatchedMemory = memory_get_usage();
         });
 
-        Event::listen('composing:*', function () {
+        Event::listen('composing:*', function (): void {
             $this->viewTimestamps[] = microtime(true);
             $this->viewMemorySnapshots[] = memory_get_usage();
         });
@@ -111,10 +106,10 @@ class LifecycleCollector
 
         // Controller + View rendering: routeMatched → middlewareDone
         if ($this->routeMatched !== null && $this->middlewareDone !== null) {
-            $firstView = ! empty($this->viewTimestamps) ? min($this->viewTimestamps) : null;
-            $lastView = ! empty($this->viewTimestamps) ? max($this->viewTimestamps) : null;
-            $firstViewMemory = ! empty($this->viewMemorySnapshots) ? $this->viewMemorySnapshots[0] : null;
-            $lastViewMemory = ! empty($this->viewMemorySnapshots) ? end($this->viewMemorySnapshots) : null;
+            $firstView = !empty($this->viewTimestamps) ? min($this->viewTimestamps) : null;
+            $lastView = !empty($this->viewTimestamps) ? max($this->viewTimestamps) : null;
+            $firstViewMemory = !empty($this->viewMemorySnapshots) ? $this->viewMemorySnapshots[0] : null;
+            $lastViewMemory = !empty($this->viewMemorySnapshots) ? end($this->viewMemorySnapshots) : null;
 
             if ($firstView !== null && $lastView !== null) {
                 // Controller: routeMatched → firstView

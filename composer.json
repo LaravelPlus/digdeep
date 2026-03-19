@@ -13,13 +13,20 @@
             "providers": [
                 "LaravelPlus\\DigDeep\\DigDeepServiceProvider"
             ]
-        } 
+        }
     },
     "require": {
         "php": "^8.4",
-        "illuminate/support": "^12.0",
-        "ext-pdo_sqlite": "*",
-        "laravel/mcp": "^0.1"
+        "illuminate/support": "^12.0|^13.0",
+        "illuminate/database": "^12.0|^13.0",
+        "illuminate/http": "^12.0|^13.0"
+    },
+    "require-dev": {
+        "laravel/mcp": "^0.5"
+    },
+    "suggest": {
+        "laravel/mcp": "Required to expose DigDeep data through the MCP server protocol.",
+        "laravel/ai": "Required for AI-assisted query analysis and exception investigation."
     },
     "minimum-stability": "stable"
 }

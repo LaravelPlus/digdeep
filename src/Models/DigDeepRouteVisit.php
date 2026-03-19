@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class DigDeepRouteVisit extends Model
+final class DigDeepRouteVisit extends Model
 {
     protected $table = 'digdeep_route_visits';
 

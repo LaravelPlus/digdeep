@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Collectors;
 
 use Illuminate\Support\Facades\Event;
 
-class EventCollector
+final class EventCollector
 {
     /** @var array<int, array{event: string, payload_summary: string}> */
     private array $events = [];
@@ -24,7 +26,7 @@ class EventCollector
 
     public function listen(): void
     {
-        Event::listen('*', function (string $eventName, array $payload) {
+        Event::listen('*', function (string $eventName, array $payload): void {
             if ($this->shouldIgnore($eventName)) {
                 return;
             }
@@ -44,13 +46,7 @@ class EventCollector
 
     private function shouldIgnore(string $eventName): bool
     {
-        foreach ($this->ignoredPrefixes as $prefix) {
-            if (str_starts_with($eventName, $prefix)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->ignoredPrefixes, fn ($prefix) => str_starts_with($eventName, $prefix));
     }
 
     private function summarizePayload(array $payload): string

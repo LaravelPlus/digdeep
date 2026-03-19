@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep;
 
 use LaravelPlus\DigDeep\Analyzers\QueryAnalyzer;
@@ -18,8 +20,9 @@ use LaravelPlus\DigDeep\Collectors\QueryCollector;
 use LaravelPlus\DigDeep\Collectors\ScheduledTaskCollector;
 use LaravelPlus\DigDeep\Collectors\ViewCollector;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
-class DigDeepCollector
+final class DigDeepCollector
 {
     private float $startTime;
 
@@ -78,23 +81,23 @@ class DigDeepCollector
         $requestStart = defined('LARAVEL_START') ? LARAVEL_START : $this->startTime;
         $this->lifecycleCollector = new LifecycleCollector($requestStart, $this->startTime, $this->startMemory);
 
-        $this->queryCollector = new QueryCollector;
-        $this->eventCollector = new EventCollector;
-        $this->viewCollector = new ViewCollector;
-        $this->cacheCollector = new CacheCollector;
-        $this->mailCollector = new MailCollector;
-        $this->httpClientCollector = new HttpClientCollector;
-        $this->jobCollector = new JobCollector;
-        $this->inertiaCollector = new InertiaCollector;
-        $this->modelCollector = new ModelCollector;
-        $this->middlewareCollector = new MiddlewareCollector;
-        $this->commandCollector = new CommandCollector;
-        $this->scheduledTaskCollector = new ScheduledTaskCollector;
-        $this->notificationCollector = new NotificationCollector;
+        $this->queryCollector = new QueryCollector();
+        $this->eventCollector = new EventCollector();
+        $this->viewCollector = new ViewCollector();
+        $this->cacheCollector = new CacheCollector();
+        $this->mailCollector = new MailCollector();
+        $this->httpClientCollector = new HttpClientCollector();
+        $this->jobCollector = new JobCollector();
+        $this->inertiaCollector = new InertiaCollector();
+        $this->modelCollector = new ModelCollector();
+        $this->middlewareCollector = new MiddlewareCollector();
+        $this->commandCollector = new CommandCollector();
+        $this->scheduledTaskCollector = new ScheduledTaskCollector();
+        $this->notificationCollector = new NotificationCollector();
 
         $this->lifecycleCollector->listen();
         $this->modelCollector->listen();
-        $this->queryCollector->listen();
+        $this->queryCollector->listen($this->startTime);
         $this->eventCollector->listen();
         $this->viewCollector->listen();
         $this->cacheCollector->listen();
@@ -118,7 +121,7 @@ class DigDeepCollector
         return $this->middlewareCollector;
     }
 
-    public function setRequest(string $method, string $url, array $headers = [], array $payload = [], string $body = ''): void
+    public function setRequest(string $method, string $url, array $headers = [], array $payload = [], string $body = '', ?string $ip = null): void
     {
         $this->requestData = [
             'method' => $method,
@@ -126,7 +129,25 @@ class DigDeepCollector
             'headers' => $headers,
             'payload' => $payload,
             'body' => $body,
+            'ip' => $ip,
         ];
+    }
+
+    public function setAuthUser(mixed $user): void
+    {
+        if ($user === null) {
+            return;
+        }
+
+        $this->requestData['auth_user'] = match (true) {
+            method_exists($user, 'getAuthIdentifier') => [
+                'id'    => $user->getAuthIdentifier(),
+                'name'  => $user->name ?? null,
+                'email' => $user->email ?? null,
+            ],
+            is_scalar($user) => $user,
+            default => null,
+        };
     }
 
     public function setRoute(array $routeData): void
@@ -155,7 +176,7 @@ class DigDeepCollector
         $this->inertiaData = $this->inertiaCollector->getData();
     }
 
-    public function setException(\Throwable $e): void
+    public function setException(Throwable $e): void
     {
         $this->exceptionData = [
             'class' => get_class($e),
@@ -163,14 +184,12 @@ class DigDeepCollector
             'code' => $e->getCode(),
             'file' => $e->getFile(),
             'line' => $e->getLine(),
-            'trace' => array_slice(array_map(function ($frame) {
-                return [
-                    'file' => $frame['file'] ?? null,
-                    'line' => $frame['line'] ?? null,
-                    'class' => $frame['class'] ?? null,
-                    'function' => $frame['function'] ?? null,
-                ];
-            }, $e->getTrace()), 0, 30),
+            'trace' => array_slice(array_map(fn ($frame) => [
+                'file' => $frame['file'] ?? null,
+                'line' => $frame['line'] ?? null,
+                'class' => $frame['class'] ?? null,
+                'function' => $frame['function'] ?? null,
+            ], $e->getTrace()), 0, 30),
             'previous' => $e->getPrevious() ? [
                 'class' => get_class($e->getPrevious()),
                 'message' => $e->getPrevious()->getMessage(),

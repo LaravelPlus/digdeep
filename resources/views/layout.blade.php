@@ -146,6 +146,12 @@
                     Profiler
                 </span>
             </a>
+            <a href="/digdeep/export" class="dd-nav-link {{ $currentSection === 'export' ? 'active' : '' }}">
+                <span class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                    Export
+                </span>
+            </a>
         </div>
     </nav>
 
@@ -169,6 +175,7 @@
                 <div class="flex justify-between"><span class="text-drac-comment">Go to Compare</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">g c</kbd></div>
                 <div class="flex justify-between"><span class="text-drac-comment">Go to Errors</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">g e</kbd></div>
                 <div class="flex justify-between"><span class="text-drac-comment">Go to Profiler</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">g r</kbd></div>
+                <div class="flex justify-between"><span class="text-drac-comment">Go to Export</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">g x</kbd></div>
                 <div class="flex justify-between"><span class="text-drac-comment">Show shortcuts</span><kbd class="bg-drac-current text-drac-fg px-2 py-0.5 rounded font-mono">?</kbd></div>
             </div>
         </div>
@@ -176,7 +183,7 @@
     <script>
     (function(){
         let pending = null;
-        const routes = { d: '/digdeep', p: '/digdeep/pipeline', s: '/digdeep/security', c: '/digdeep/compare', e: '/digdeep/errors', a: '/digdeep/audits', u: '/digdeep/urls', b: '/digdeep/database', t: '/digdeep/trends', h: '/digdeep/cache', f: '/digdeep/performance', r: '/digdeep/profiler' };
+        const routes = { d: '/digdeep', p: '/digdeep/pipeline', s: '/digdeep/security', c: '/digdeep/compare', e: '/digdeep/errors', a: '/digdeep/audits', u: '/digdeep/urls', b: '/digdeep/database', t: '/digdeep/trends', h: '/digdeep/cache', f: '/digdeep/performance', r: '/digdeep/profiler', x: '/digdeep/export' };
         document.addEventListener('keydown', function(e) {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) return;
             if (e.key === '?') { document.getElementById('dd-shortcuts-help').style.display = document.getElementById('dd-shortcuts-help').style.display === 'none' ? 'flex' : 'none'; return; }

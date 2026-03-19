@@ -15,6 +15,8 @@ Route::prefix('digdeep')->middleware(Authorize::class)->group(function () {
     Route::get('/errors', [DashboardController::class, 'errors'])->name('digdeep.errors');
     Route::get('/compare', [DashboardController::class, 'compare'])->name('digdeep.compare');
     Route::get('/profiler', [DashboardController::class, 'profiler'])->name('digdeep.profiler');
+    Route::get('/export', [DashboardController::class, 'exportView'])->name('digdeep.export-view');
+    Route::get('/api/html-export', [ApiController::class, 'htmlExport'])->name('digdeep.html-export');
     Route::get('/trends', [DashboardController::class, 'trends'])->name('digdeep.trends');
     Route::get('/performance', [DashboardController::class, 'performance'])->name('digdeep.performance');
     Route::get('/cache', [DashboardController::class, 'cache'])->name('digdeep.cache');
@@ -29,6 +31,9 @@ Route::prefix('digdeep')->middleware(Authorize::class)->group(function () {
     Route::post('/api/profile/{id}/tags', [ApiController::class, 'updateTags'])->name('digdeep.tags');
     Route::post('/api/profile/{id}/notes', [ApiController::class, 'updateNotes'])->name('digdeep.notes');
     Route::post('/api/explain', [ApiController::class, 'explain'])->name('digdeep.explain');
+    Route::post('/api/ai-suggest', [ApiController::class, 'aiSuggest'])->name('digdeep.ai-suggest');
+    Route::post('/api/ai-apply', [ApiController::class, 'aiApplyFix'])->name('digdeep.ai-apply');
+    Route::post('/api/ai-investigate', [ApiController::class, 'aiInvestigateException'])->name('digdeep.ai-investigate');
     Route::get('/api/profiles', [ApiController::class, 'profiles'])->name('digdeep.api.profiles');
     Route::get('/api/trends', [ApiController::class, 'trends'])->name('digdeep.api.trends');
     Route::post('/api/bulk', [ApiController::class, 'bulkAction'])->name('digdeep.api.bulk');

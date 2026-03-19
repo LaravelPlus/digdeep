@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Analyzers;
 
 use Illuminate\Support\Str;
 
-class QueryAnalyzer
+final class QueryAnalyzer
 {
     /**
      * Normalize SQL by replacing literals with placeholders.
@@ -19,7 +21,7 @@ class QueryAnalyzer
         $normalized = preg_replace('/\b\d+(\.\d+)?\b/', '?', $normalized);
 
         // Collapse whitespace
-        $normalized = preg_replace('/\s+/', ' ', trim($normalized));
+        $normalized = preg_replace('/\s+/', ' ', mb_trim($normalized));
 
         return $normalized;
     }
@@ -40,7 +42,7 @@ class QueryAnalyzer
 
             $key = $normalized.'|'.$caller;
 
-            if (! isset($groups[$key])) {
+            if (!isset($groups[$key])) {
                 $groups[$key] = [
                     'pattern' => $normalized,
                     'count' => 0,
@@ -52,7 +54,7 @@ class QueryAnalyzer
             $groups[$key]['count']++;
             $groups[$key]['total_time_ms'] += $q['time_ms'] ?? 0;
 
-            if ($caller && ! in_array($caller, $groups[$key]['callers'])) {
+            if ($caller && !in_array($caller, $groups[$key]['callers'])) {
                 $groups[$key]['callers'][] = $caller;
             }
         }
@@ -115,7 +117,7 @@ class QueryAnalyzer
         $results = [];
 
         foreach ($queries as $q) {
-            $sql = trim($q['sql']);
+            $sql = mb_trim($q['sql']);
 
             if (preg_match('/^\s*SELECT\s+\*\s+FROM\s+[`"]?(\w+)/i', $sql, $m)) {
                 $results[] = [
@@ -158,18 +160,18 @@ class QueryAnalyzer
         $results = [];
 
         foreach ($queries as $q) {
-            $sql = trim($q['sql']);
+            $sql = mb_trim($q['sql']);
 
             // Look for WHERE clauses with specific columns
             if (preg_match_all('/\bWHERE\b.*?[`"]?(\w+)[`"]?\s*(?:=|>|<|LIKE|IN)\s/i', $sql, $whereMatches)) {
                 // Extract table name
                 $table = self::extractTable($sql);
-                if (! $table || ! isset($indexedColumns[$table])) {
+                if (!$table || !isset($indexedColumns[$table])) {
                     continue;
                 }
 
                 foreach ($whereMatches[1] as $column) {
-                    if (! in_array($column, $indexedColumns[$table]) && $column !== 'id') {
+                    if (!in_array($column, $indexedColumns[$table]) && $column !== 'id') {
                         $results[] = [
                             'sql' => $sql,
                             'table' => $table,
@@ -231,7 +233,7 @@ class QueryAnalyzer
         }
 
         // Missing indexes
-        if (! empty($schema)) {
+        if (!empty($schema)) {
             $missingIndexes = self::detectMissingIndexes($queries, $schema);
             foreach ($missingIndexes as $mi) {
                 $hints[] = [

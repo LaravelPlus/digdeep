@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Mcp\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -9,13 +11,15 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
+use Override;
 
 #[IsReadOnly]
 #[Description('Get the slowest routes ranked by P95 latency. Useful for identifying performance bottlenecks.')]
-class GetSlowestRoutes extends Tool
+final class GetSlowestRoutes extends Tool
 {
     public function __construct(private DigDeepStorage $storage) {}
 
+    #[Override]
     public function handle(Request $request): Response
     {
         $limit = (int) ($request->get('limit') ?? 10);
@@ -25,7 +29,7 @@ class GetSlowestRoutes extends Tool
         foreach ($profiles as $p) {
             $key = $p['method'] . ' ' . $p['url'];
 
-            if (! isset($routeMap[$key])) {
+            if (!isset($routeMap[$key])) {
                 $routeMap[$key] = [
                     'method' => $p['method'],
                     'url' => $p['url'],
@@ -69,8 +73,9 @@ class GetSlowestRoutes extends Tool
     }
 
     /**
-     * @return array<string, \Illuminate\Contracts\JsonSchema\JsonSchema>
+     * @return array<string, JsonSchema>
      */
+    #[Override]
     public function schema(JsonSchema $schema): array
     {
         return [

@@ -1,14 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Storage;
 
+use Illuminate\Support\Facades\DB;
 use LaravelPlus\DigDeep\Events\ThresholdExceeded;
 use LaravelPlus\DigDeep\Models\DigDeepProfile;
 use LaravelPlus\DigDeep\Models\DigDeepRouteVisit;
 
-class DigDeepStorage
+final class DigDeepStorage
 {
-    public function __construct(private int $maxProfiles = 100) {}
+    public function __construct(private readonly int $maxProfiles = 100) {}
 
     public function store(string $id, array $data): void
     {
@@ -36,7 +39,7 @@ class DigDeepStorage
 
         // Check thresholds and auto-tag
         $exceeded = $this->checkThresholds($id, $data);
-        if (! empty($exceeded)) {
+        if (!empty($exceeded)) {
             $tagMap = [
                 'duration_ms' => 'slow',
                 'query_count' => 'query-heavy',
@@ -88,7 +91,7 @@ class DigDeepStorage
     {
         $profile = DigDeepProfile::query()->find($id);
 
-        if (! $profile) {
+        if (!$profile) {
             return null;
         }
 
@@ -125,6 +128,23 @@ class DigDeepStorage
     public function allWithData(int $limit = 200): array
     {
         return DigDeepProfile::query()
+            ->latest()
+            ->limit($limit)
+            ->get()
+            ->map(fn (DigDeepProfile $profile) => $this->profileToArray($profile))
+            ->all();
+    }
+
+    /**
+     * Return only error profiles (status >= 400) with full data.
+     * More efficient than loading all profiles when only errors are needed.
+     *
+     * @return array<int, array>
+     */
+    public function allErrorsWithData(int $limit = 200): array
+    {
+        return DigDeepProfile::query()
+            ->where('status_code', '>=', 400)
             ->latest()
             ->limit($limit)
             ->get()
@@ -179,7 +199,7 @@ class DigDeepStorage
         }
 
         if (isset($criteria['method']) && $criteria['method'] !== '') {
-            $query->where('method', strtoupper($criteria['method']));
+            $query->where('method', mb_strtoupper($criteria['method']));
         }
 
         return $query
@@ -215,12 +235,12 @@ class DigDeepStorage
     {
         $count = 0;
 
-        DigDeepProfile::query()->whereIn('id', $ids)->chunkById(50, function ($profiles) use ($tag, &$count) {
+        DigDeepProfile::query()->whereIn('id', $ids)->chunkById(50, function ($profiles) use ($tag, &$count): void {
             foreach ($profiles as $profile) {
                 $existing = $profile->tags ?? '';
                 $existingTags = array_filter(array_map('trim', explode(',', $existing)));
 
-                if (! in_array($tag, $existingTags)) {
+                if (!in_array($tag, $existingTags)) {
                     $existingTags[] = $tag;
                     $profile->update(['tags' => implode(', ', $existingTags)]);
                 }
@@ -241,14 +261,16 @@ class DigDeepStorage
     {
         $count = DigDeepProfile::query()->count();
 
-        if ($count > $keep) {
-            $idsToDelete = DigDeepProfile::query()
-                ->oldest()
-                ->limit($count - $keep)
-                ->pluck('id');
-
-            DigDeepProfile::query()->whereIn('id', $idsToDelete)->delete();
+        if ($count <= $keep) {
+            return;
         }
+
+        $idsToDelete = DigDeepProfile::query()
+            ->oldest()
+            ->limit($count - $keep)
+            ->pluck('id');
+
+        DigDeepProfile::query()->whereIn('id', $idsToDelete)->delete();
     }
 
     public function delete(string $id): void
@@ -269,7 +291,7 @@ class DigDeepStorage
             COALESCE(MAX(query_count), 0) as most_queries
         ')->first();
 
-        if (! $result) {
+        if (!$result) {
             return [
                 'total' => 0,
                 'avg_duration' => 0,
@@ -292,24 +314,11 @@ class DigDeepStorage
 
     public function incrementRouteVisit(string $url, string $method = 'GET'): void
     {
-        $visit = DigDeepRouteVisit::query()
-            ->where('url', $url)
-            ->where('method', $method)
-            ->first();
-
-        if ($visit) {
-            $visit->update([
-                'visit_count' => $visit->visit_count + 1,
-                'last_visited_at' => now(),
-            ]);
-        } else {
-            DigDeepRouteVisit::query()->create([
-                'url' => $url,
-                'method' => $method,
-                'visit_count' => 1,
-                'last_visited_at' => now(),
-            ]);
-        }
+        DigDeepRouteVisit::query()->upsert(
+            [['url' => $url, 'method' => $method, 'visit_count' => 1, 'last_visited_at' => now()]],
+            ['url', 'method'],
+            ['visit_count' => DB::raw('digdeep_route_visits.visit_count + 1'), 'last_visited_at' => now()],
+        );
     }
 
     public function updateTags(string $id, string $tags): void
@@ -347,23 +356,23 @@ class DigDeepStorage
         $maxBytes = $maxKb * 1024;
 
         $encoded = json_encode($data);
-        if ($encoded === false || strlen($encoded) <= $maxBytes) {
+        if ($encoded === false || mb_strlen($encoded) <= $maxBytes) {
             return $data;
         }
 
         // Truncate response body first (usually the largest)
-        if (isset($data['response']['body']) && strlen($data['response']['body']) > 1024) {
+        if (isset($data['response']['body']) && mb_strlen($data['response']['body']) > 1024) {
             $data['response']['body'] = mb_substr($data['response']['body'], 0, 1024).'... [truncated]';
         }
 
         // Truncate request body
-        if (isset($data['request']['body']) && strlen($data['request']['body']) > 1024) {
+        if (isset($data['request']['body']) && mb_strlen($data['request']['body']) > 1024) {
             $data['request']['body'] = mb_substr($data['request']['body'], 0, 1024).'... [truncated]';
         }
 
         // Strip query bindings if still too large
         $encoded = json_encode($data);
-        if ($encoded !== false && strlen($encoded) > $maxBytes) {
+        if ($encoded !== false && mb_strlen($encoded) > $maxBytes) {
             foreach ($data['queries'] ?? [] as &$q) {
                 $q['bindings'] = [];
             }

@@ -1,18 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Collectors;
 
 use Illuminate\Queue\Events\JobQueued;
 use Illuminate\Support\Facades\Event;
 
-class JobCollector
+final class JobCollector
 {
     /** @var array<int, array{job: string, queue: string}> */
     private array $jobs = [];
 
     public function listen(): void
     {
-        Event::listen(JobQueued::class, function (JobQueued $event) {
+        Event::listen(JobQueued::class, function (JobQueued $event): void {
             $this->jobs[] = [
                 'job' => is_object($event->job) ? get_class($event->job) : (string) $event->job,
                 'queue' => $event->queue ?? 'default',

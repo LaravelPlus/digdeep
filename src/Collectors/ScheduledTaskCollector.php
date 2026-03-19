@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace LaravelPlus\DigDeep\Collectors;
 
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskStarting;
 use Illuminate\Support\Facades\Event;
 
-class ScheduledTaskCollector
+final class ScheduledTaskCollector
 {
     /** @var array<int, array{command: string, expression: string, duration_s: float|null}> */
     private array $tasks = [];
@@ -16,7 +18,7 @@ class ScheduledTaskCollector
 
     public function listen(): void
     {
-        Event::listen(ScheduledTaskStarting::class, function (ScheduledTaskStarting $event) {
+        Event::listen(ScheduledTaskStarting::class, function (ScheduledTaskStarting $event): void {
             $this->startTimes[] = microtime(true);
 
             $this->tasks[] = [
@@ -26,7 +28,7 @@ class ScheduledTaskCollector
             ];
         });
 
-        Event::listen(ScheduledTaskFinished::class, function (ScheduledTaskFinished $event) {
+        Event::listen(ScheduledTaskFinished::class, function (ScheduledTaskFinished $event): void {
             $index = count($this->tasks) - 1;
 
             if ($index >= 0 && isset($this->startTimes[$index])) {
