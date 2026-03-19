@@ -14,7 +14,6 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 use LaravelPlus\DigDeep\DigDeepCollector;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
-use Override;
 use Throwable;
 
 #[IsDestructive]
@@ -23,7 +22,6 @@ final class ProfileUrl extends Tool
 {
     public function __construct(private DigDeepStorage $storage) {}
 
-    #[Override]
     public function handle(Request $request): Response
     {
         $url = $request->get('url');
@@ -87,7 +85,6 @@ final class ProfileUrl extends Tool
     /**
      * @return array<string, JsonSchema>
      */
-    #[Override]
     public function schema(JsonSchema $schema): array
     {
         return [

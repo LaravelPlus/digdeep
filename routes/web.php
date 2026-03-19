@@ -20,6 +20,7 @@ Route::prefix('digdeep')->middleware(Authorize::class)->group(function () {
     Route::get('/trends', [DashboardController::class, 'trends'])->name('digdeep.trends');
     Route::get('/performance', [DashboardController::class, 'performance'])->name('digdeep.performance');
     Route::get('/cache', [DashboardController::class, 'cache'])->name('digdeep.cache');
+    Route::get('/logs', [DashboardController::class, 'logs'])->name('digdeep.logs');
     Route::get('/profile/{id}', [DashboardController::class, 'show'])->name('digdeep.show');
 
     // API routes

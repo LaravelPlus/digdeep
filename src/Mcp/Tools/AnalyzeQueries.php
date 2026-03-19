@@ -13,7 +13,6 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use LaravelPlus\DigDeep\Analyzers\QueryAnalyzer;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
-use Override;
 use Throwable;
 
 #[IsReadOnly]
@@ -22,7 +21,6 @@ final class AnalyzeQueries extends Tool
 {
     public function __construct(private DigDeepStorage $storage) {}
 
-    #[Override]
     public function handle(Request $request): Response
     {
         $id = $request->get('id');
@@ -60,7 +58,6 @@ final class AnalyzeQueries extends Tool
     /**
      * @return array<string, JsonSchema>
      */
-    #[Override]
     public function schema(JsonSchema $schema): array
     {
         return [

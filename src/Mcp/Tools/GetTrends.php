@@ -11,13 +11,11 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use LaravelPlus\DigDeep\Models\DigDeepProfile;
-use Override;
 
 #[IsReadOnly]
 #[Description('Get time-series trend data showing duration, memory, and query count over time. Optionally filter by route.')]
 final class GetTrends extends Tool
 {
-    #[Override]
     public function handle(Request $request): Response
     {
         $route = $request->get('route');
@@ -60,7 +58,6 @@ final class GetTrends extends Tool
     /**
      * @return array<string, JsonSchema>
      */
-    #[Override]
     public function schema(JsonSchema $schema): array
     {
         return [

@@ -10,6 +10,7 @@
     $httpCalls   = $profile['http_client'] ?? [];
     $jobs        = $profile['jobs'] ?? [];
     $mailItems   = $profile['mail'] ?? [];
+    $logs        = $profile['logs'] ?? [];
 
     $duration   = $perf['duration_ms'];
     $memory     = $perf['memory_peak_mb'];
@@ -463,7 +464,7 @@
 <style>
 #__digdeep__ *{box-sizing:border-box;font-family:'JetBrains Mono','Fira Code',ui-monospace,monospace;line-height:1.4;}
 #__digdeep__ a{text-decoration:none;}
-#__digdeep_panels__{position:fixed;bottom:36px;left:0;right:0;z-index:2147483645;background:#282a36;border-top:1px solid #44475a;max-height:380px;overflow:hidden;display:none;box-shadow:0 -8px 32px rgba(0,0,0,.5);}
+#__digdeep_panels__{position:fixed!important;bottom:36px!important;left:0!important;right:0!important;z-index:2147483645!important;background:#282a36;border-top:1px solid #44475a;max-height:380px;overflow:hidden;display:none;box-shadow:0 -8px 32px rgba(0,0,0,.5);}
 #__digdeep_panels_inner__{max-height:380px;overflow-y:auto;padding:0;}
 #__digdeep_panels__ .ddp{display:none;padding:12px 16px;}
 #__digdeep_panels__ .ddp.active{display:block;}
@@ -486,7 +487,7 @@
 #__digdeep_panels__ .dd-deleted{color:#ff5555;}
 #__digdeep_panels__ .dd-warn{background:rgba(255,85,85,.1);border-left:3px solid #ff5555;padding:8px 12px;border-radius:0 4px 4px 0;margin-bottom:10px;font-size:11px;color:#ff5555;}
 #__digdeep_panels__ .dd-empty{color:#6272a4;font-size:12px;padding:20px 0;text-align:center;}
-#__digdeep_bar__{position:fixed;bottom:0;left:0;right:0;height:36px;z-index:2147483646;background:#21222c;border-top:1px solid #44475a;display:flex;align-items:center;gap:0;font-size:11.5px;color:#f8f8f2;user-select:none;box-shadow:0 -2px 12px rgba(0,0,0,.4);}
+#__digdeep_bar__{position:fixed!important;bottom:0!important;left:0!important;right:0!important;height:36px;z-index:2147483646!important;background:#21222c;border-top:1px solid #44475a;display:flex;align-items:center;gap:0;font-size:11.5px;color:#f8f8f2;user-select:none;box-shadow:0 -2px 12px rgba(0,0,0,.4);transform:none!important;}
 #__digdeep_bar__.collapsed #__digdeep_panels__{display:none!important;}
 #__digdeep_bar__ .dd-logo{display:flex;align-items:center;gap:6px;padding:0 10px 0 12px;height:100%;border-right:1px solid #44475a;cursor:pointer;flex-shrink:0;color:#bd93f9;transition:background .15s;}
 #__digdeep_bar__ .dd-logo:hover{background:rgba(189,147,249,.08);}
@@ -605,7 +606,7 @@
 #__digdeep_panels__ .ddp-close button{background:none;border:none;color:#6272a4;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:4px;padding:2px 6px;border-radius:3px;font-family:inherit;transition:all .15s;}
 #__digdeep_panels__ .ddp-close button:hover{color:#f8f8f2;background:rgba(255,255,255,.05);}
 #__digdeep_panels__ .ddp-close .ddp-title{margin-bottom:0;}
-#__digdeep_fab__{position:fixed;bottom:12px;left:12px;z-index:2147483646;width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#bd93f9,#ff79c6);box-shadow:0 4px 16px rgba(189,147,249,.4);cursor:pointer;display:none;align-items:center;justify-content:center;border:none;transition:transform .15s,box-shadow .15s;}
+#__digdeep_fab__{position:fixed!important;bottom:12px!important;left:12px!important;z-index:2147483646!important;width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#bd93f9,#ff79c6);box-shadow:0 4px 16px rgba(189,147,249,.4);cursor:pointer;display:none;align-items:center;justify-content:center;border:none;transition:transform .15s,box-shadow .15s;}
 #__digdeep_fab__:hover{transform:scale(1.1);box-shadow:0 6px 20px rgba(189,147,249,.55);}
 #__digdeep_fab__ svg{width:16px;height:16px;color:#fff;}
 @keyframes dd-spin{to{transform:rotate(360deg);}}
@@ -1861,6 +1862,71 @@
       </div>
     </div>
 
+    {{-- Logs panel --}}
+    <div class="ddp" id="__ddp_logs__">
+      @php
+        $logLevelColors = [
+            'emergency' => '#ff5555', 'alert' => '#ff5555', 'critical' => '#ff5555',
+            'error'     => '#ff5555', 'warning' => '#ffb86c', 'notice' => '#8be9fd',
+            'info'      => '#8be9fd', 'debug'   => '#6272a4',
+        ];
+        $logErrorCount = count(array_filter($logs, fn ($l) => in_array($l['level'], ['emergency', 'alert', 'critical', 'error'])));
+        $logWarnCount  = count(array_filter($logs, fn ($l) => $l['level'] === 'warning'));
+      @endphp
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 16px 0;">
+        <span style="font-size:10px;color:#6272a4;">{{ count($logs) > 0 ? count($logs).' log '.(count($logs) === 1 ? 'entry' : 'entries').' captured this request' : 'No logs captured for this request' }}</span>
+        <a href="/digdeep/logs" target="_blank" style="font-size:10px;color:#bd93f9;text-decoration:none;display:inline-flex;align-items:center;gap:3px;" onmouseover="this.style.color='#f8f8f2'" onmouseout="this.style.color='#bd93f9'">
+          Full log viewer
+          <svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+        </a>
+      </div>
+      @if(empty($logs))
+        <div class="dd-empty" style="padding-top:12px;">No log messages captured for this request.<br><span style="font-size:10px;">Logs written via <code>Log::info()</code>, <code>Log::error()</code>, etc. will appear here.</span></div>
+      @else
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid #44475a;background:#21222c;">
+          <span style="font-size:11px;font-weight:700;color:#f8f8f2;flex:1;">{{ count($logs) }} log {{ count($logs) === 1 ? 'entry' : 'entries' }}</span>
+          @if($logErrorCount > 0)
+            <span style="background:rgba(255,85,85,.12);color:#ff5555;border:1px solid rgba(255,85,85,.3);font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">{{ $logErrorCount }} error{{ $logErrorCount > 1 ? 's' : '' }}</span>
+          @endif
+          @if($logWarnCount > 0)
+            <span style="background:rgba(255,184,108,.12);color:#ffb86c;border:1px solid rgba(255,184,108,.3);font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">{{ $logWarnCount }} warning{{ $logWarnCount > 1 ? 's' : '' }}</span>
+          @endif
+        </div>
+        <table>
+          <thead><tr>
+            <th style="width:60px;">Level</th>
+            <th>Message</th>
+            <th style="width:70px;">Time</th>
+          </tr></thead>
+          <tbody>
+            @foreach($logs as $log)
+              @php
+                $logColor = $logLevelColors[$log['level']] ?? '#6272a4';
+                $isLogError = in_array($log['level'], ['emergency', 'alert', 'critical', 'error']);
+              @endphp
+              <tr style="{{ $isLogError ? 'background:rgba(255,85,85,.05);' : ($log['level'] === 'warning' ? 'background:rgba(255,184,108,.04);' : '') }}">
+                <td>
+                  <span style="background:{{ $isLogError ? 'rgba(255,85,85,.15)' : ($log['level'] === 'warning' ? 'rgba(255,184,108,.15)' : ($log['level'] === 'debug' ? 'rgba(98,114,164,.15)' : 'rgba(139,233,253,.1)')) }};color:{{ $logColor }};font-size:9px;font-weight:800;padding:1px 5px;border-radius:3px;letter-spacing:.04em;text-transform:uppercase;">{{ $log['level'] }}</span>
+                </td>
+                <td>
+                  <div style="color:#f8f8f2;font-size:11px;word-break:break-all;">{{ $log['message'] }}</div>
+                  @if(!empty($log['context']))
+                    <details style="display:block;margin-top:3px;">
+                      <summary style="cursor:pointer;color:#8be9fd;font-size:10px;list-style:none;display:inline-flex;align-items:center;gap:3px;">
+                        context
+                      </summary>
+                      <pre class="dd-json">{{ $log['context'] }}</pre>
+                    </details>
+                  @endif
+                </td>
+                <td class="ddtime">+{{ number_format($log['time_ms'], 1) }}<span style="color:#6272a4;font-size:9px;">ms</span></td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      @endif
+    </div>
+
     {{-- Session panel --}}
     <div class="ddp" id="__ddp_session__">
       @if(empty($sessionData))
@@ -2191,6 +2257,21 @@
       <span class="ddm-lbl">ajax</span>
     </div>
 
+    {{-- Logs --}}
+    <div class="ddm" id="__ddm_logs__" onclick="__dd.openPanel('logs')"
+         title="{{ count($logs) > 0 ? count($logs).' log '.(count($logs) === 1 ? 'entry' : 'entries').' this request' : 'Logs — click to open viewer' }}{{ isset($logErrorCount) && $logErrorCount > 0 ? ' · '.$logErrorCount.' error'.($logErrorCount > 1 ? 's' : '') : '' }}">
+      <svg fill="none" stroke="{{ isset($logErrorCount) && $logErrorCount > 0 ? '#ff5555' : (isset($logWarnCount) && $logWarnCount > 0 ? '#ffb86c' : '#6272a4') }}" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5"/>
+      </svg>
+      @if(count($logs) > 0)
+        <span class="ddm-val" style="color:{{ isset($logErrorCount) && $logErrorCount > 0 ? '#ff5555' : (isset($logWarnCount) && $logWarnCount > 0 ? '#ffb86c' : '#6272a4') }}">{{ count($logs) }}</span>
+        @if(isset($logErrorCount) && $logErrorCount > 0)
+          <span class="ddm-n1">{{ $logErrorCount }}</span>
+        @endif
+      @endif
+      <span class="ddm-lbl">logs</span>
+    </div>
+
   </div>
 
   {{-- Actions --}}
@@ -2291,6 +2372,7 @@
     export: 'Export as HTML',
     session: 'Session ({{ count($sessionData) }} {{ Str::plural("key", count($sessionData)) }})',
     timeline: 'Request Timeline — {{ number_format($duration, 1) }}ms total',
+    logs: 'Logs{{ count($logs) > 0 ? " (".count($logs).")" : "" }}{{ isset($logErrorCount) && $logErrorCount > 0 ? " · ".$logErrorCount." error".($logErrorCount > 1 ? "s" : "") : "" }}',
   };
 
   function applyMinimized() {
@@ -2310,7 +2392,9 @@
   var savedHeight = parseInt(localStorage.getItem(LS_HEIGHT_KEY) || '0');
   if (savedHeight >= 120 && savedHeight <= 800) {
     panels.style.maxHeight = savedHeight + 'px';
-    document.getElementById('__digdeep_panels_inner__').style.maxHeight = savedHeight + 'px';
+    panels.style.height = savedHeight + 'px';
+    var restoredInner = document.getElementById('__digdeep_panels_inner__');
+    if (restoredInner) { restoredInner.style.maxHeight = (savedHeight - 5) + 'px'; restoredInner.style.height = (savedHeight - 5) + 'px'; }
   }
 
   // Restore persisted state on load
@@ -2878,7 +2962,8 @@
       if (!resizing) { return; }
       var newH = Math.min(800, Math.max(120, startH + startY - e.clientY));
       panels.style.maxHeight = newH + 'px';
-      if (inner) { inner.style.maxHeight = newH + 'px'; }
+      panels.style.height = newH + 'px';
+      if (inner) { inner.style.maxHeight = (newH - 5) + 'px'; inner.style.height = (newH - 5) + 'px'; }
     });
     document.addEventListener('mouseup', function() {
       if (!resizing) { return; }

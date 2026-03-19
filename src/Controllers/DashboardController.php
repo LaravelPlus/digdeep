@@ -688,6 +688,104 @@ final class DashboardController extends Controller
         return round($sorted[max(0, $idx)], 1);
     }
 
+    public function logs(): View
+    {
+        $currentSection = 'logs';
+        $logPath = storage_path('logs');
+        $logFiles = [];
+
+        if (is_dir($logPath)) {
+            foreach (glob($logPath.'/*.log') ?: [] as $file) {
+                $logFiles[] = [
+                    'name' => basename($file),
+                    'path' => $file,
+                    'size' => filesize($file),
+                    'modified' => filemtime($file),
+                ];
+            }
+        }
+
+        usort($logFiles, fn ($a, $b) => $b['modified'] <=> $a['modified']);
+
+        $selectedFile = request('file', $logFiles[0]['name'] ?? null);
+        $selectedPath = $selectedFile ? $logPath.'/'.$selectedFile : null;
+
+        // Validate file is within the logs directory (prevent path traversal)
+        if ($selectedPath && (! str_starts_with(realpath($selectedPath) ?: '', realpath($logPath).'/'))) {
+            $selectedPath = null;
+        }
+
+        $entries = [];
+
+        if ($selectedPath && file_exists($selectedPath)) {
+            $entries = $this->parseLogFile($selectedPath, 500);
+        }
+
+        return view('digdeep::logs', compact('currentSection', 'logFiles', 'selectedFile', 'entries'));
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function parseLogFile(string $path, int $maxEntries): array
+    {
+        // Read file in chunks from the end to avoid memory issues with large files
+        $handle = fopen($path, 'rb');
+        if (! $handle) {
+            return [];
+        }
+
+        fseek($handle, 0, SEEK_END);
+        $fileSize = ftell($handle);
+        $chunkSize = min($fileSize, 2 * 1024 * 1024); // Read max 2MB from end
+        fseek($handle, max(0, $fileSize - $chunkSize));
+        $content = fread($handle, $chunkSize);
+        fclose($handle);
+
+        if (! $content) {
+            return [];
+        }
+
+        $entryPattern = '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (?:\w+)\.(\w+): (.+)/m';
+        preg_match_all($entryPattern, $content, $matches, PREG_OFFSET_CAPTURE);
+
+        $entries = [];
+        $matchCount = count($matches[0]);
+
+        for ($i = $matchCount - 1; $i >= 0 && count($entries) < $maxEntries; $i--) {
+            $datetime = $matches[1][$i][0];
+            $level    = strtolower($matches[2][$i][0]);
+            $offset   = (int) $matches[0][$i][1];
+
+            // Grab the rest of the entry (up to next entry start)
+            $nextOffset = ($i + 1 < $matchCount) ? (int) $matches[0][$i + 1][1] : strlen($content);
+            $fullEntry  = substr($content, $offset, $nextOffset - $offset);
+            $firstLine  = $matches[3][$i][0];
+
+            // Strip the stack trace from the first line message
+            $messageEnd = strpos($firstLine, '{');
+            $message    = $messageEnd !== false ? rtrim(substr($firstLine, 0, $messageEnd)) : rtrim($firstLine);
+            $context    = $messageEnd !== false ? substr($firstLine, $messageEnd) : '';
+
+            // Detect if there's a stacktrace block
+            $stacktrace = '';
+            if (str_contains($fullEntry, '[stacktrace]')) {
+                $stStart    = strpos($fullEntry, '[stacktrace]');
+                $stacktrace = trim(substr($fullEntry, $stStart));
+            }
+
+            $entries[] = [
+                'datetime'   => $datetime,
+                'level'      => $level,
+                'message'    => $message,
+                'context'    => $context,
+                'stacktrace' => $stacktrace,
+            ];
+        }
+
+        return $entries;
+    }
+
     public function exportView(): View
     {
         $profiles = $this->storage->all();

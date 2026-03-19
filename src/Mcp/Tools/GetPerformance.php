@@ -11,13 +11,11 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use LaravelPlus\DigDeep\Models\DigDeepProfile;
-use Override;
 
 #[IsReadOnly]
 #[Description('Get per-route performance metrics: P50/P95/P99 latency percentiles, throughput (RPM), error rates, and average queries/memory. Also returns global application-wide metrics.')]
 final class GetPerformance extends Tool
 {
-    #[Override]
     public function handle(Request $request): Response
     {
         $range = $request->get('range', 'all');
@@ -54,7 +52,6 @@ final class GetPerformance extends Tool
     /**
      * @return array<string, JsonSchema>
      */
-    #[Override]
     public function schema(JsonSchema $schema): array
     {
         return [

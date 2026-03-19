@@ -10,14 +10,12 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\MimeType;
 use Laravel\Mcp\Server\Attributes\Uri;
 use Laravel\Mcp\Server\Resource;
-use Override;
 
 #[Description('Overview of DigDeep profiler features, collectors, and capabilities.')]
 #[Uri('digdeep://overview')]
 #[MimeType('text/markdown')]
 final class DigDeepOverview extends Resource
 {
-    #[Override]
     public function handle(Request $request): Response
     {
         return Response::text(<<<'MARKDOWN'

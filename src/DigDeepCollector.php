@@ -15,6 +15,7 @@ use LaravelPlus\DigDeep\Collectors\LifecycleCollector;
 use LaravelPlus\DigDeep\Collectors\MailCollector;
 use LaravelPlus\DigDeep\Collectors\MiddlewareCollector;
 use LaravelPlus\DigDeep\Collectors\ModelCollector;
+use LaravelPlus\DigDeep\Collectors\LogCollector;
 use LaravelPlus\DigDeep\Collectors\NotificationCollector;
 use LaravelPlus\DigDeep\Collectors\QueryCollector;
 use LaravelPlus\DigDeep\Collectors\ScheduledTaskCollector;
@@ -73,6 +74,8 @@ final class DigDeepCollector
 
     private NotificationCollector $notificationCollector;
 
+    private LogCollector $logCollector;
+
     public function startRequest(): void
     {
         $this->startTime = microtime(true);
@@ -94,6 +97,7 @@ final class DigDeepCollector
         $this->commandCollector = new CommandCollector();
         $this->scheduledTaskCollector = new ScheduledTaskCollector();
         $this->notificationCollector = new NotificationCollector();
+        $this->logCollector = new LogCollector($this->startTime);
 
         $this->lifecycleCollector->listen();
         $this->modelCollector->listen();
@@ -107,6 +111,7 @@ final class DigDeepCollector
         $this->commandCollector->listen();
         $this->scheduledTaskCollector->listen();
         $this->notificationCollector->listen();
+        $this->logCollector->listen();
     }
 
     public function markLifecyclePhase(string $name): void
@@ -229,6 +234,7 @@ final class DigDeepCollector
             'commands' => $this->commandCollector->getData(),
             'scheduled_tasks' => $this->scheduledTaskCollector->getData(),
             'notifications' => $this->notificationCollector->getData(),
+            'logs' => $this->logCollector->getData(),
             'performance' => [
                 'duration_ms' => round($durationMs, 2),
                 'memory_peak_mb' => $memoryPeakMb,
