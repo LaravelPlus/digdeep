@@ -41,4 +41,5 @@ Route::prefix('digdeep')->middleware(Authorize::class)->group(function () {
     Route::get('/api/performance', [ApiController::class, 'performanceData'])->name('digdeep.api.performance');
     Route::get('/api/compare', [ApiController::class, 'compareData'])->name('digdeep.api.compare');
     Route::post('/api/bulk-export', [ApiController::class, 'bulkExport'])->name('digdeep.api.bulkExport');
+    Route::post('/api/run-command', [ApiController::class, 'runCommand'])->name('digdeep.api.run-command');
 });

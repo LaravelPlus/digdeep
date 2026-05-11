@@ -7,6 +7,7 @@ namespace LaravelPlus\DigDeep\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use LaravelPlus\DigDeep\DigDeep;
 use LaravelPlus\DigDeep\DigDeepCollector;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
 use Symfony\Component\HttpFoundation\Response;
@@ -131,7 +132,8 @@ final class ProfileRequest
         // Overhead is the extra time DigDeep added on top of the real request duration.
         $profileData['performance']['profiling_overhead_ms'] = round(max(0.0, $totalElapsed - $requestDuration), 2);
 
-        $profileData['session'] = $this->collectSession($request);
+        $profileData['session']      = $this->collectSession($request);
+        $profileData['dev_fixtures'] = DigDeep::flushFixtures();
 
         $profileId = Str::uuid()->toString();
         $this->storage->store($profileId, $profileData);

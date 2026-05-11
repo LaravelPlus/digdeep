@@ -6,13 +6,10 @@
     <title>DigDeep — Performance Report — {{ $data['appName'] }}</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style type="text/tailwindcss">
         @theme {
-            --font-sans: 'Inter', system-ui, sans-serif;
-            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-sans: system-ui, ui-sans-serif, sans-serif;
+            --font-mono: ui-monospace, 'Fira Code', monospace;
             --color-drac-bg: #282a36;
             --color-drac-current: #44475a;
             --color-drac-fg: #f8f8f2;

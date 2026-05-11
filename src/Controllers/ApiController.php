@@ -14,6 +14,7 @@ use LaravelPlus\DigDeep\Models\DigDeepProfile;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\Process\Process;
 use Throwable;
 
 final class ApiController extends Controller
@@ -796,6 +797,53 @@ PROMPT;
         return response()->json([
             'a' => $profileA,
             'b' => $profileB,
+        ]);
+    }
+
+    public function runCommand(Request $request): JsonResponse
+    {
+        $request->validate([
+            'command' => ['required', 'string', 'max:500'],
+        ]);
+
+        $input = trim((string) $request->input('command'));
+
+        // Strip `php artisan ` prefix if provided
+        $input = (string) preg_replace('/^php\s+artisan\s+/i', '', $input);
+
+        // Block dangerous commands
+        $blocked = ['migrate:fresh', 'migrate:reset', 'db:wipe', 'optimize:clear', 'serve', 'tinker'];
+        $commandName = strtolower(explode(' ', $input)[0]);
+        foreach ($blocked as $b) {
+            if ($commandName === $b) {
+                return response()->json(['exit_code' => 1, 'output' => "Command '{$b}' is blocked for safety."]);
+            }
+        }
+
+        // Tokenise the input (honours simple quoting) and run as a subprocess so
+        // that interactive commands and long-running ones are properly handled.
+        $tokens = array_values(array_filter(
+            str_getcsv($input, ' ', '"'),
+            fn (string $t): bool => $t !== '',
+        ));
+
+        $process = new Process(
+            ['php', 'artisan', ...$tokens],
+            base_path(),
+            null,
+            null,
+            30
+        );
+
+        try {
+            $process->run();
+        } catch (Throwable $e) {
+            return response()->json(['exit_code' => 1, 'output' => $e->getMessage()]);
+        }
+
+        return response()->json([
+            'exit_code' => $process->getExitCode(),
+            'output' => $process->getOutput().$process->getErrorOutput(),
         ]);
     }
 

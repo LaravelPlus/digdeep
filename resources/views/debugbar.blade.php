@@ -11,6 +11,7 @@
     $jobs        = $profile['jobs'] ?? [];
     $mailItems   = $profile['mail'] ?? [];
     $logs        = $profile['logs'] ?? [];
+    $devFixtures = $profile['dev_fixtures'] ?? [];
 
     $duration   = $perf['duration_ms'];
     $memory     = $perf['memory_peak_mb'];
@@ -270,6 +271,7 @@
     }
 
     // ── Cache ─────────────────────────────────────────────────────────────────
+    $hitRate = ($cacheHits + $cacheMisses) > 0 ? round($cacheHits / ($cacheHits + $cacheMisses) * 100) : 0;
     if (($cacheHits + $cacheMisses) >= 5 && $hitRate < 50) {
         $warnings[] = [
             'severity' => 'info', 'category' => 'Cache',
@@ -318,7 +320,6 @@
         $cacheByKey[$k][$op['type']]++;
     }
     arsort($cacheByKey);
-    $hitRate = ($cacheHits + $cacheMisses) > 0 ? round($cacheHits / ($cacheHits + $cacheMisses) * 100) : 0;
 
     $hasAiSdk = ! empty(config('digdeep.ai_key')) || function_exists('Laravel\Ai\agent');
 
@@ -464,7 +465,7 @@
 <style>
 #__digdeep__ *{box-sizing:border-box;font-family:'JetBrains Mono','Fira Code',ui-monospace,monospace;line-height:1.4;}
 #__digdeep__ a{text-decoration:none;}
-#__digdeep_panels__{position:fixed!important;bottom:36px!important;left:0!important;right:0!important;z-index:2147483645!important;background:#282a36;border-top:1px solid #44475a;max-height:380px;overflow:hidden;display:none;box-shadow:0 -8px 32px rgba(0,0,0,.5);}
+#__digdeep_panels__{position:fixed!important;bottom:36px!important;left:0!important;width:100%!important;z-index:2147483645!important;background:#282a36;border-top:1px solid #44475a;max-height:380px;overflow:hidden;display:none;box-shadow:0 -8px 32px rgba(0,0,0,.5);}
 #__digdeep_panels_inner__{max-height:380px;overflow-y:auto;padding:0;}
 #__digdeep_panels__ .ddp{display:none;padding:12px 16px;}
 #__digdeep_panels__ .ddp.active{display:block;}
@@ -487,7 +488,7 @@
 #__digdeep_panels__ .dd-deleted{color:#ff5555;}
 #__digdeep_panels__ .dd-warn{background:rgba(255,85,85,.1);border-left:3px solid #ff5555;padding:8px 12px;border-radius:0 4px 4px 0;margin-bottom:10px;font-size:11px;color:#ff5555;}
 #__digdeep_panels__ .dd-empty{color:#6272a4;font-size:12px;padding:20px 0;text-align:center;}
-#__digdeep_bar__{position:fixed!important;bottom:0!important;left:0!important;right:0!important;height:36px;z-index:2147483646!important;background:#21222c;border-top:1px solid #44475a;display:flex;align-items:center;gap:0;font-size:11.5px;color:#f8f8f2;user-select:none;box-shadow:0 -2px 12px rgba(0,0,0,.4);transform:none!important;}
+#__digdeep_bar__{position:fixed!important;bottom:0!important;left:0!important;width:100%!important;height:36px;z-index:2147483646!important;background:#21222c;border-top:1px solid #44475a;display:flex;align-items:center;gap:0;font-size:11.5px;color:#f8f8f2;user-select:none;box-shadow:0 -2px 12px rgba(0,0,0,.4);overflow:hidden;}
 #__digdeep_bar__.collapsed #__digdeep_panels__{display:none!important;}
 #__digdeep_bar__ .dd-logo{display:flex;align-items:center;gap:6px;padding:0 10px 0 12px;height:100%;border-right:1px solid #44475a;cursor:pointer;flex-shrink:0;color:#bd93f9;transition:background .15s;}
 #__digdeep_bar__ .dd-logo:hover{background:rgba(189,147,249,.08);}
@@ -758,6 +759,65 @@
           </tbody>
         </table>
       @endif
+
+      {{-- Models section (merged into queries panel) --}}
+      @if(!empty($models))
+        @php
+          $modelTotals = array_map(fn ($m) => $m['retrieved'] + $m['created'] + $m['updated'] + $m['deleted'], $models);
+          $modelMax    = max($modelTotals ?: [1]);
+          usort($models, fn ($a, $b) => ($b['retrieved'] + $b['created'] + $b['updated'] + $b['deleted']) <=> ($a['retrieved'] + $a['created'] + $a['updated'] + $a['deleted']));
+        @endphp
+        <div style="border-top:1px solid #44475a;margin-top:8px;padding-top:10px;">
+          <div style="padding:0 16px 6px;display:flex;align-items:center;gap:8px;">
+            <span class="ddp-title" style="margin-bottom:0;">Models</span>
+            <span style="color:#6272a4;font-size:10px;">{{ count($models) }} model{{ count($models) !== 1 ? 's' : '' }} · {{ $modelTotal }} total operations</span>
+          </div>
+          <table>
+            <thead><tr>
+              <th>Model</th>
+              <th style="width:120px;">Activity</th>
+              <th style="text-align:right;width:32px;" title="Retrieved"><span style="color:#bd93f9;">R</span></th>
+              <th style="text-align:right;width:32px;" title="Created"><span style="color:#50fa7b;">C</span></th>
+              <th style="text-align:right;width:32px;" title="Updated"><span style="color:#ffb86c;">U</span></th>
+              <th style="text-align:right;width:32px;" title="Deleted"><span style="color:#ff5555;">D</span></th>
+            </tr></thead>
+            <tbody>
+              @foreach($models as $midx => $model)
+                @php
+                  $mTotal  = $model['retrieved'] + $model['created'] + $model['updated'] + $model['deleted'];
+                  $mPct    = $modelMax > 0 ? ($mTotal / $modelMax) * 100 : 0;
+                  $mShort  = $shortClass($model['class']);
+                  $mId     = 'dd_mq_'.$midx;
+                @endphp
+                <tr style="cursor:pointer;" onclick="(function(){var d=document.getElementById('{{ $mId }}');if(d){d.style.display=d.style.display==='none'?'table-row':'none';}})()">
+                  <td style="color:#f8f8f2;">{{ $mShort }}</td>
+                  <td style="padding-top:7px;padding-bottom:7px;">
+                    <div style="background:#44475a;border-radius:2px;height:5px;overflow:hidden;">
+                      <div style="height:100%;border-radius:2px;width:{{ $mPct }}%;background:{{ $model['retrieved'] > 0 ? '#bd93f9' : ($model['created'] > 0 ? '#50fa7b' : ($model['updated'] > 0 ? '#ffb86c' : '#ff5555')) }};"></div>
+                    </div>
+                  </td>
+                  <td class="dd-retrieved" style="text-align:right;">{{ $model['retrieved'] ?: '—' }}</td>
+                  <td class="dd-created"   style="text-align:right;">{{ $model['created']   ?: '—' }}</td>
+                  <td class="dd-updated"   style="text-align:right;">{{ $model['updated']   ?: '—' }}</td>
+                  <td class="dd-deleted"   style="text-align:right;">{{ $model['deleted']   ?: '—' }}</td>
+                </tr>
+                <tr id="{{ $mId }}" style="display:none;">
+                  <td colspan="6" style="background:#1e1f2b;padding:6px 12px 8px;border-left:2px solid rgba(189,147,249,.3);">
+                    <div style="font-size:10px;color:#6272a4;margin-bottom:3px;">Full class:</div>
+                    <div style="font-size:10.5px;color:#bd93f9;font-family:monospace;word-break:break-all;">{{ $model['class'] }}</div>
+                    <div style="display:flex;gap:8px;margin-top:6px;">
+                      @if($model['retrieved'] > 0)<span style="font-size:10px;background:rgba(189,147,249,.12);color:#bd93f9;padding:1px 6px;border-radius:3px;">{{ $model['retrieved'] }} retrieved</span>@endif
+                      @if($model['created']   > 0)<span style="font-size:10px;background:rgba(80,250,123,.12);color:#50fa7b;padding:1px 6px;border-radius:3px;">{{ $model['created'] }} created</span>@endif
+                      @if($model['updated']   > 0)<span style="font-size:10px;background:rgba(255,184,108,.12);color:#ffb86c;padding:1px 6px;border-radius:3px;">{{ $model['updated'] }} updated</span>@endif
+                      @if($model['deleted']   > 0)<span style="font-size:10px;background:rgba(255,85,85,.12);color:#ff5555;padding:1px 6px;border-radius:3px;">{{ $model['deleted'] }} deleted</span>@endif
+                    </div>
+                  </td>
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+      @endif
     </div>
 
     {{-- Views panel --}}
@@ -1021,67 +1081,6 @@
           </div>
           <div style="margin-top:8px;font-size:10px;color:#44475a;">Click any key tile in "By Key" view to copy key name.</div>
         </div>
-      @endif
-    </div>
-
-    {{-- Models panel --}}
-    <div class="ddp" id="__ddp_models__">
-      @if(empty($models))
-        <div class="dd-empty">No model operations recorded.</div>
-      @else
-        @php
-          $modelTotals = array_map(fn ($m) => $m['retrieved'] + $m['created'] + $m['updated'] + $m['deleted'], $models);
-          $modelMax    = max($modelTotals ?: [1]);
-          usort($models, fn ($a, $b) => ($b['retrieved'] + $b['created'] + $b['updated'] + $b['deleted']) <=> ($a['retrieved'] + $a['created'] + $a['updated'] + $a['deleted']));
-        @endphp
-        <div style="padding:8px 16px 0;color:#6272a4;font-size:10px;">{{ count($models) }} model{{ count($models) !== 1 ? 's' : '' }} · {{ $modelTotal }} total operations · click any row to see full class name</div>
-        <table>
-          <thead><tr>
-            <th>Model</th>
-            <th style="width:120px;">Activity</th>
-            <th style="text-align:right;width:32px;" title="Retrieved"><span style="color:#bd93f9;">R</span></th>
-            <th style="text-align:right;width:32px;" title="Created"><span style="color:#50fa7b;">C</span></th>
-            <th style="text-align:right;width:32px;" title="Updated"><span style="color:#ffb86c;">U</span></th>
-            <th style="text-align:right;width:32px;" title="Deleted"><span style="color:#ff5555;">D</span></th>
-          </tr></thead>
-          <tbody>
-            @foreach($models as $midx => $model)
-              @php
-                $mTotal  = $model['retrieved'] + $model['created'] + $model['updated'] + $model['deleted'];
-                $mPct    = $modelMax > 0 ? ($mTotal / $modelMax) * 100 : 0;
-                $mShort  = $shortClass($model['class']);
-                $mId     = 'dd_m_'.$midx;
-              @endphp
-              <tr style="cursor:pointer;" onclick="(function(){var d=document.getElementById('{{ $mId }}');if(d){d.style.display=d.style.display==='none'?'table-row':'none';}})()">
-                <td style="color:#f8f8f2;">{{ $mShort }}</td>
-                <td style="padding-top:7px;padding-bottom:7px;">
-                  <div style="background:#44475a;border-radius:2px;height:5px;overflow:hidden;">
-                    <div style="height:100%;border-radius:2px;width:{{ $mPct }}%;background:{{ $model['retrieved'] > 0 ? '#bd93f9' : ($model['created'] > 0 ? '#50fa7b' : ($model['updated'] > 0 ? '#ffb86c' : '#ff5555')) }};"></div>
-                  </div>
-                </td>
-                <td class="dd-retrieved" style="text-align:right;">{{ $model['retrieved'] ?: '—' }}</td>
-                <td class="dd-created"   style="text-align:right;">{{ $model['created']   ?: '—' }}</td>
-                <td class="dd-updated"   style="text-align:right;">{{ $model['updated']   ?: '—' }}</td>
-                <td class="dd-deleted"   style="text-align:right;">{{ $model['deleted']   ?: '—' }}</td>
-              </tr>
-              <tr id="{{ $mId }}" style="display:none;">
-                <td colspan="6" style="background:#1e1f2b;padding:6px 12px 8px;border-left:2px solid rgba(189,147,249,.3);">
-                  <div style="font-size:10px;color:#6272a4;margin-bottom:3px;">Full class:</div>
-                  <div style="font-size:10.5px;color:#bd93f9;font-family:monospace;word-break:break-all;">{{ $model['class'] }}</div>
-                  <div style="display:flex;gap:8px;margin-top:6px;">
-                    @if($model['retrieved'] > 0)<span style="font-size:10px;background:rgba(189,147,249,.12);color:#bd93f9;padding:1px 6px;border-radius:3px;">{{ $model['retrieved'] }} retrieved</span>@endif
-                    @if($model['created']   > 0)<span style="font-size:10px;background:rgba(80,250,123,.12);color:#50fa7b;padding:1px 6px;border-radius:3px;">{{ $model['created'] }} created</span>@endif
-                    @if($model['updated']   > 0)<span style="font-size:10px;background:rgba(255,184,108,.12);color:#ffb86c;padding:1px 6px;border-radius:3px;">{{ $model['updated'] }} updated</span>@endif
-                    @if($model['deleted']   > 0)<span style="font-size:10px;background:rgba(255,85,85,.12);color:#ff5555;padding:1px 6px;border-radius:3px;">{{ $model['deleted'] }} deleted</span>@endif
-                  </div>
-                  @if($model['retrieved'] > 0)
-                    <div style="margin-top:5px;font-size:10px;color:#44475a;">Tip: check Queries tab for SELECT statements loading this model.</div>
-                  @endif
-                </td>
-              </tr>
-            @endforeach
-          </tbody>
-        </table>
       @endif
     </div>
 
@@ -1954,6 +1953,116 @@
       @endif
     </div>
 
+    {{-- Dev Fixtures panel --}}
+    @if(!empty($devFixtures))
+    <div class="ddp" id="__ddp_devfixtures__">
+      <div class="ddp-title">
+        <svg width="12" height="12" fill="none" stroke="#50fa7b" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714a2.25 2.25 0 001.5 2.125 2.25 2.25 0 01-1.5 2.125v5.714" />
+        </svg>
+        <span style="color:#50fa7b">Dev Fixtures</span>
+        <span style="color:#44475a;font-weight:400;font-size:10px;">— click row to fill field · "Fill all" to fill entire group</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding:0 0 8px;">
+        @foreach($devFixtures as $groupKey => $group)
+        @php $groupJson = json_encode(array_map(fn($f) => ['field' => $f['field'], 'value' => (string)$f['value']], $group['fields']), JSON_HEX_APOS|JSON_HEX_QUOT); @endphp
+        <div style="border:1px solid #44475a;border-radius:6px;overflow:hidden;">
+          <div style="background:#44475a;padding:5px 8px 5px 12px;font-size:10px;font-weight:700;color:#f8f8f2;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;justify-content:space-between;">
+            <span>{{ $group['label'] }}</span>
+            <button onclick="__dd_fillGroup({{ $groupJson }})" style="background:#50fa7b;color:#21222c;border:none;border-radius:3px;padding:2px 8px;font-size:9px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.04em;">FILL ALL</button>
+          </div>
+          <table style="width:100%;margin:0;">
+            <tbody>
+              @foreach($group['fields'] as $field)
+              @php $escapedValue = json_encode((string)$field['value']); @endphp
+              <tr style="cursor:pointer;" onclick="__dd_fillField('{{ $field['field'] }}', {{ $escapedValue }});__dd_flashRow(this);">
+                <td style="padding:5px 12px;color:#6272a4;font-size:10px;white-space:nowrap;width:1%;">{{ $field['label'] }}</td>
+                <td style="padding:5px 12px;color:#f1fa8c;font-size:11px;font-family:monospace;word-break:break-all;">
+                  {{ $field['value'] }}
+                  <span class="dd-filled" style="opacity:0;transition:opacity .2s;color:#50fa7b;font-size:9px;margin-left:4px;">✓ filled</span>
+                </td>
+              </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+        @endforeach
+      </div>
+    </div>
+    <script>
+    function __dd_fillField(name, value) {
+        // Find by data-field attribute first, then fall back to name attribute
+        const el = document.querySelector('[data-field="'+name+'"]') || document.querySelector('[name="'+name+'"]');
+        if (!el) return;
+        if (el.type === 'checkbox') {
+            const checked = value === true || value === 'true' || value === '1';
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked')?.set;
+            setter ? setter.call(el, checked) : (el.checked = checked);
+            el.dispatchEvent(new Event('change', {bubbles:true}));
+        } else {
+            const proto = Object.getPrototypeOf(el);
+            const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+            setter ? setter.call(el, value) : (el.value = value);
+            el.dispatchEvent(new Event('input', {bubbles:true}));
+            el.dispatchEvent(new Event('change', {bubbles:true}));
+        }
+        navigator.clipboard?.writeText(value);
+    }
+    function __dd_fillGroup(fields) {
+        fields.forEach(f => __dd_fillField(f.field, f.value));
+        // Flash all rows in the group
+        document.querySelectorAll('#__ddp_devfixtures__ .dd-filled').forEach(el => {
+            el.style.opacity = 1;
+            setTimeout(() => el.style.opacity = 0, 1400);
+        });
+    }
+    function __dd_flashRow(row) {
+        const span = row.querySelector('.dd-filled');
+        if (span) { span.style.opacity = 1; setTimeout(() => span.style.opacity = 0, 1400); }
+    }
+    </script>
+    @endif
+
+    {{-- Commands panel --}}
+    <div class="ddp" id="__ddp_commands__">
+      <div class="ddp-inner" style="display:flex;flex-direction:column;height:100%;gap:0;padding:0;">
+
+        {{-- Terminal output --}}
+        <div id="__dd_cmd_output__" style="flex:1;overflow-y:auto;padding:12px 16px;font-family:monospace;font-size:12px;background:#1a1b26;min-height:0;">
+          <div style="color:#6272a4;font-size:11px;">Artisan command runner — type a command below and press Run or Enter.</div>
+        </div>
+
+        {{-- Input row --}}
+        <div style="border-top:1px solid #44475a;padding:8px 12px;display:flex;align-items:center;gap:8px;background:#21222c;flex-shrink:0;">
+          <span style="color:#50fa7b;font-size:12px;font-weight:700;font-family:monospace;flex-shrink:0;">$ php artisan</span>
+          <input
+            id="__dd_cmd_input__"
+            type="text"
+            placeholder="cache:clear"
+            autocomplete="off"
+            spellcheck="false"
+            style="flex:1;background:#282a36;border:1px solid #44475a;border-radius:6px;padding:5px 10px;color:#f8f8f2;font-size:12px;font-family:monospace;outline:none;min-width:0;"
+            onkeydown="if(event.key==='Enter'){__dd.runCommand();}"
+            onfocus="this.style.borderColor='#bd93f9';"
+            onblur="this.style.borderColor='#44475a';"
+          />
+          <button
+            id="__dd_cmd_run_btn__"
+            onclick="__dd.runCommand()"
+            style="background:#bd93f9;color:#21222c;border:none;border-radius:6px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;transition:opacity .15s;"
+            onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'"
+          >Run</button>
+          <button
+            onclick="__dd.clearCommandOutput()"
+            title="Clear output"
+            style="background:transparent;border:1px solid #44475a;border-radius:6px;padding:5px 8px;color:#6272a4;font-size:11px;cursor:pointer;flex-shrink:0;transition:all .15s;"
+            onmouseover="this.style.borderColor='#6272a4';this.style.color='#f8f8f2'" onmouseout="this.style.borderColor='#44475a';this.style.color='#6272a4'"
+          >Clear</button>
+        </div>
+
+      </div>
+    </div>
+
     {{-- Timeline panel --}}
     <div class="ddp" id="__ddp_timeline__">
       @php
@@ -2097,8 +2206,8 @@
   {{-- Metrics — ordered: perf → rendering → data → analysis → details --}}
   <div class="dd-metrics">
 
-    {{-- Queries --}}
-    <div class="ddm" id="__ddm_queries__" onclick="__dd.openPanel('queries')" title="SQL queries — click to inspect">
+    {{-- Queries + Models --}}
+    <div class="ddm" id="__ddm_queries__" onclick="__dd.openPanel('queries')" title="SQL queries &amp; model operations — click to inspect">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75"/>
       </svg>
@@ -2108,6 +2217,11 @@
       @endif
       <span class="ddm-lbl">· {{ number_format($queryTime, 1) }}ms</span>
       @if(!empty($nPlusOne))<span class="ddm-n1">N+1</span>@endif
+      @if($modelTotal > 0)
+        <span class="ddm-lbl" style="margin-left:4px;color:#6272a4;">|</span>
+        <span class="ddm-val" style="color:#bd93f9;margin-left:4px;">{{ $modelTotal }}</span>
+        <span class="ddm-lbl">models</span>
+      @endif
     </div>
 
     {{-- Lifecycle / timing --}}
@@ -2146,17 +2260,6 @@
         </svg>
         <span class="ddm-val" style="color:{{ $hitRate >= 80 ? '#50fa7b' : ($hitRate >= 50 ? '#ffb86c' : '#ff5555') }}">{{ $hitRate }}%</span>
         <span class="ddm-lbl">cache</span>
-      </div>
-    @endif
-
-    {{-- Models --}}
-    @if($modelTotal > 0)
-      <div class="ddm" id="__ddm_models__" onclick="__dd.openPanel('models')" title="Eloquent model operations — click to inspect">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"/>
-        </svg>
-        <span class="ddm-val" style="color:#bd93f9">{{ $modelTotal }}</span>
-        <span class="ddm-lbl">models</span>
       </div>
     @endif
 
@@ -2272,6 +2375,25 @@
       <span class="ddm-lbl">logs</span>
     </div>
 
+    {{-- Commands --}}
+    <div class="ddm" id="__ddm_commands__" onclick="__dd.openPanel('commands')" title="Artisan command runner — click to open">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z"/>
+      </svg>
+      <span class="ddm-lbl">cmd</span>
+    </div>
+
+    {{-- Dev Fixtures --}}
+    @if(!empty($devFixtures))
+    <div class="ddm" id="__ddm_devfixtures__" onclick="__dd.openPanel('devfixtures')" title="{{ count($devFixtures) }} fixture {{ count($devFixtures) === 1 ? 'group' : 'groups' }} — click to fill forms">
+      <svg fill="none" stroke="#50fa7b" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714a2.25 2.25 0 001.5 2.125 2.25 2.25 0 01-1.5 2.125v5.714M14.25 3.104c.251.023.501.05.75.082M19 14.5l-4.091-4.091" />
+      </svg>
+      <span class="ddm-val" style="color:#50fa7b">{{ count($devFixtures) }}</span>
+      <span class="ddm-lbl" style="color:#50fa7b">dev</span>
+    </div>
+    @endif
+
   </div>
 
   {{-- Actions --}}
@@ -2359,11 +2481,11 @@
     request: 'Request & Response Headers',
     ajax: 'AJAX / Inertia Navigation',
     ai: 'AI Suggestions ({{ $totalAiIssues ?? 0 }} issue{{ ($totalAiIssues ?? 0) !== 1 ? "s" : "" }})',
-    queries: 'Queries ({{ $queryCount }} · {{ number_format($queryTime, 1) }}ms)',
+    queries: 'Queries ({{ $queryCount }} · {{ number_format($queryTime, 1) }}ms){{ $modelTotal > 0 ? " · Models (".$modelTotal.")" : "" }}',
     views: '{{ $isInertia ? 'Vue · '.$inertiaComponent : 'Blade Views ('.$viewCount.')' }}',
     events: 'Events ({{ $eventCount }})',
     cache: 'Cache ({{ $cacheHits }}h / {{ $cacheMisses }}m / {{ $cacheWrites }}w)',
-    models: 'Models ({{ $modelTotal }})',
+
     lifecycle: 'Request Lifecycle',
     http: 'HTTP Client ({{ count($httpCalls) }} request{{ count($httpCalls) !== 1 ? "s" : "" }}{{ count(array_filter($httpCalls, fn($r) => ($r["status"]??200)>=400)) > 0 ? " · ".count(array_filter($httpCalls, fn($r) => ($r["status"]??200)>=400))." failed" : "" }})',
     warnings: 'Warnings ({{ $warningCount }}){{ $criticalCount > 0 ? " — ".$criticalCount." critical" : "" }}',
@@ -2373,6 +2495,7 @@
     session: 'Session ({{ count($sessionData) }} {{ Str::plural("key", count($sessionData)) }})',
     timeline: 'Request Timeline — {{ number_format($duration, 1) }}ms total',
     logs: 'Logs{{ count($logs) > 0 ? " (".count($logs).")" : "" }}{{ isset($logErrorCount) && $logErrorCount > 0 ? " · ".$logErrorCount." error".($logErrorCount > 1 ? "s" : "") : "" }}',
+    commands: 'Artisan Commands',
   };
 
   function applyMinimized() {
@@ -2432,6 +2555,65 @@
       document.querySelectorAll('#__digdeep_bar__ .ddm').forEach(function(m){ m.classList.remove('active'); });
       activePanel = null;
       try { localStorage.removeItem(LS_TAB_KEY); } catch(e) {}
+    },
+    runCommand: function() {
+      var input = document.getElementById('__dd_cmd_input__');
+      var btn   = document.getElementById('__dd_cmd_run_btn__');
+      var out   = document.getElementById('__dd_cmd_output__');
+      if (!input || !out) { return; }
+      var cmd = (input.value || '').trim();
+      if (!cmd) { input.focus(); return; }
+
+      // Echo the command
+      var echo = document.createElement('div');
+      echo.style.cssText = 'color:#bd93f9;margin-top:8px;padding-top:8px;border-top:1px solid #44475a40;';
+      echo.textContent = '$ php artisan ' + cmd;
+      out.appendChild(echo);
+      out.scrollTop = out.scrollHeight;
+
+      btn.disabled = true;
+      btn.textContent = '…';
+
+      var csrf = document.querySelector('meta[name=csrf-token]');
+      fetch('/digdeep/api/run-command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf ? csrf.content : '' },
+        body: JSON.stringify({ command: cmd })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var result = document.createElement('pre');
+        result.style.cssText = 'margin:4px 0 0;padding:0;white-space:pre-wrap;word-break:break-all;font-size:11px;line-height:1.5;color:' + (data.exit_code === 0 ? '#50fa7b' : '#ff5555') + ';';
+        result.textContent = (data.output || '').trim() || (data.exit_code === 0 ? '(no output)' : '(command failed)');
+        out.appendChild(result);
+        out.scrollTop = out.scrollHeight;
+        btn.disabled = false;
+        btn.textContent = 'Run';
+        input.value = '';
+        input.focus();
+      })
+      .catch(function(e) {
+        var err = document.createElement('div');
+        err.style.cssText = 'color:#ff5555;font-size:11px;margin-top:4px;';
+        err.textContent = 'Request failed: ' + e.message;
+        out.appendChild(err);
+        out.scrollTop = out.scrollHeight;
+        btn.disabled = false;
+        btn.textContent = 'Run';
+      });
+    },
+    clearCommandOutput: function() {
+      var out = document.getElementById('__dd_cmd_output__');
+      if (out) {
+        out.innerHTML = '<div style="color:#6272a4;font-size:11px;">Artisan command runner — type a command below and press Run or Enter.</div>';
+      }
+      var input = document.getElementById('__dd_cmd_input__');
+      if (input) { input.focus(); }
+    },
+    toggleCollapse: function() {
+      var bar = document.getElementById('__digdeep_bar__');
+      if (!bar) { return; }
+      bar.classList.toggle('collapsed');
     },
     hide: function() {
       applyMinimized();
@@ -2521,10 +2703,11 @@
           } catch(e) {}
         }
 
-        // 2c. Existing <link rel="stylesheet"> tags (bunny.net fonts, etc.)
+        // 2c. Existing <link rel="stylesheet"> tags (same-origin only; skip external font CDNs)
         var liveLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
         for (var lnk of liveLinks) {
           var lhref = lnk.href;
+          if (!lhref.startsWith(origin + '/')) { continue; } // skip cross-origin (fonts.bunny.net, googleapis, etc.)
           if (mainCssPath && lhref.includes(mainCssPath.split('/').pop())) { continue; }
           try {
             var lkr = await fetch(lhref);
@@ -2532,10 +2715,10 @@
           } catch(e) {}
         }
 
-        // 2d. Inline font binaries in all CSS
-        setStep('Inlining fonts as base64…', 30);
+        // 2d. Inline font and image binaries in all CSS
+        setStep('Inlining fonts and images as base64…', 30);
         for (var ci = 0; ci < cssChunks.length; ci++) {
-          cssChunks[ci].content = await __dd._inlineFontsInCss(cssChunks[ci].content, cssChunks[ci].base);
+          cssChunks[ci].content = await __dd._inlineAssetsInCss(cssChunks[ci].content, cssChunks[ci].base);
         }
 
         // ── 3. Fetch JS ────────────────────────────────────────────────────────
@@ -2602,6 +2785,35 @@
           if (bodyEl) { bodyEl.appendChild(scriptEl); }
         }
 
+        // Inline same-origin <img> src attributes as base64
+        setStep('Inlining images…', 85);
+        var imgs = Array.from(clone.querySelectorAll('img[src]'));
+        for (var img of imgs) {
+          var imgSrc = img.getAttribute('src');
+          if (!imgSrc || imgSrc.startsWith('data:')) { continue; }
+          var absImgUrl = imgSrc.startsWith('http') ? imgSrc : new URL(imgSrc, origin).href;
+          if (!absImgUrl.startsWith(origin + '/')) { continue; }
+          try {
+            var ir = await fetch(absImgUrl);
+            if (!ir.ok) { continue; }
+            var ibuf = await ir.arrayBuffer();
+            var ibytes = new Uint8Array(ibuf);
+            var ib64 = '', ichunkSz = 32768;
+            for (var ii = 0; ii < ibytes.length; ii += ichunkSz) {
+              ib64 += String.fromCharCode.apply(null, ibytes.subarray(ii, Math.min(ii + ichunkSz, ibytes.length)));
+            }
+            ib64 = btoa(ib64);
+            var ilc = absImgUrl.split('?')[0].toLowerCase();
+            var iMime = ilc.endsWith('.svg') ? 'image/svg+xml'
+                      : ilc.endsWith('.png') ? 'image/png'
+                      : ilc.endsWith('.gif') ? 'image/gif'
+                      : ilc.endsWith('.webp') ? 'image/webp'
+                      : ilc.endsWith('.avif') ? 'image/avif'
+                      : 'image/jpeg';
+            img.setAttribute('src', 'data:' + iMime + ';base64,' + ib64);
+          } catch(e) {}
+        }
+
         // Watermark
         var stampEl = document.createElement('div');
         stampEl.setAttribute('style', 'position:fixed;bottom:8px;right:8px;background:rgba(33,34,44,.9);color:#6272a4;font-size:9px;padding:3px 8px;border-radius:4px;border:1px solid #44475a;font-family:monospace;z-index:999999;pointer-events:none;');
@@ -2630,9 +2842,9 @@
         console.error('[DigDeep] exportPage failed:', err);
       }
     },
-    _inlineFontsInCss: async function(css, baseUrl) {
-      // Find all font file references inside url(...)
-      var re = /url\((['"]?)([^'")\s]+\.(?:woff2?|ttf|otf|eot)(?:[?#][^'")\s]*)?)\1\)/gi;
+    _inlineAssetsInCss: async function(css, baseUrl) {
+      // Find all font and image file references inside url(...)
+      var re = /url\((['"]?)([^'")\s]+\.(?:woff2?|ttf|otf|eot|svg|png|jpe?g|gif|webp|avif)(?:[?#][^'")\s]*)?)\1\)/gi;
       var matches = [];
       var m;
       while ((m = re.exec(css)) !== null) {
@@ -2653,7 +2865,7 @@
           if (!fr.ok) { continue; }
           var buf  = await fr.arrayBuffer();
           var bytes = new Uint8Array(buf);
-          // Chunked btoa to avoid call-stack overflow on large font files
+          // Chunked btoa to avoid call-stack overflow on large files
           var b64 = '', chunkSz = 32768;
           for (var i = 0; i < bytes.length; i += chunkSz) {
             b64 += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSz, bytes.length)));
@@ -2662,7 +2874,15 @@
           var lc = fUrl.split('?')[0].toLowerCase();
           var mime = lc.endsWith('.woff2') ? 'font/woff2'
                    : lc.endsWith('.woff')  ? 'font/woff'
-                   : lc.endsWith('.ttf')   ? 'font/truetype' : 'font/opentype';
+                   : lc.endsWith('.ttf')   ? 'font/truetype'
+                   : lc.endsWith('.otf')   ? 'font/opentype'
+                   : lc.endsWith('.eot')   ? 'application/vnd.ms-fontobject'
+                   : lc.endsWith('.svg')   ? 'image/svg+xml'
+                   : lc.endsWith('.png')   ? 'image/png'
+                   : lc.endsWith('.gif')   ? 'image/gif'
+                   : lc.endsWith('.webp')  ? 'image/webp'
+                   : lc.endsWith('.avif')  ? 'image/avif'
+                   : 'image/jpeg';
           css = css.split(item.url).join('data:' + mime + ';base64,' + b64);
         } catch(e) {}
       }
