@@ -33,13 +33,13 @@ final class ReadSourceFileTool implements Tool
     {
         $path = $this->sanitizePath($request['path']);
 
-        if (!$path) {
+        if (! $path) {
             return 'Error: Access denied. Only files under app/ or resources/js/ may be read.';
         }
 
         $fullPath = base_path($path);
 
-        if (!file_exists($fullPath) || !is_file($fullPath)) {
+        if (! file_exists($fullPath) || ! is_file($fullPath)) {
             return "Error: File not found: {$path}";
         }
 

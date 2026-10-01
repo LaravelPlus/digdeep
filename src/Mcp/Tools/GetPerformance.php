@@ -68,9 +68,9 @@ final class GetPerformance extends Tool
         $routeMap = [];
 
         foreach ($profiles as $p) {
-            $key = $p['method'] . ' ' . $p['url'];
+            $key = $p['method'].' '.$p['url'];
 
-            if (!isset($routeMap[$key])) {
+            if (! isset($routeMap[$key])) {
                 $routeMap[$key] = [
                     'method' => $p['method'],
                     'url' => $p['url'],

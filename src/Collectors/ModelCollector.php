@@ -35,7 +35,7 @@ final class ModelCollector
         // Event format: "eloquent.retrieved: App\Models\User"
         $class = str_replace("eloquent.{$operation}: ", '', $event);
 
-        if (!isset($this->models[$class])) {
+        if (! isset($this->models[$class])) {
             $this->models[$class] = [
                 'class' => $class,
                 'retrieved' => 0,

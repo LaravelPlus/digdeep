@@ -44,9 +44,9 @@ final class QueryCollector
         $frame = array_find($trace, function ($frame) {
             $file = $frame['file'] ?? '';
 
-            return !empty($file)
-                && !str_contains($file, '/vendor/')
-                && !str_contains($file, '/digdeep/');
+            return ! empty($file)
+                && ! str_contains($file, '/vendor/')
+                && ! str_contains($file, '/digdeep/');
         });
 
         return $frame !== null

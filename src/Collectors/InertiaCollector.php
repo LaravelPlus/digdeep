@@ -109,7 +109,7 @@ final class InertiaCollector
                 $summary[$key] = 'string('.mb_strlen($value).')';
             } elseif (is_bool($value)) {
                 $summary[$key] = $value ? 'true' : 'false';
-            } elseif (null === $value) {
+            } elseif ($value === null) {
                 $summary[$key] = 'null';
             } else {
                 $summary[$key] = (string) $value;

@@ -132,13 +132,13 @@ final class ProfileRequest
         // Overhead is the extra time DigDeep added on top of the real request duration.
         $profileData['performance']['profiling_overhead_ms'] = round(max(0.0, $totalElapsed - $requestDuration), 2);
 
-        $profileData['session']      = $this->collectSession($request);
+        $profileData['session'] = $this->collectSession($request);
         $profileData['dev_fixtures'] = DigDeep::flushFixtures();
 
         $profileId = Str::uuid()->toString();
         $this->storage->store($profileId, $profileData);
 
-        if (config('digdeep.show_debugbar', true) && !$isAjax) {
+        if (config('digdeep.show_debugbar', true) && ! $isAjax) {
             $response = $this->injectDebugbar($response, $profileData, $profileId);
         }
 
@@ -149,13 +149,13 @@ final class ProfileRequest
     {
         $contentType = $response->headers->get('Content-Type', '');
 
-        if (!str_contains($contentType, 'text/html')) {
+        if (! str_contains($contentType, 'text/html')) {
             return $response;
         }
 
         $content = $response->getContent();
 
-        if (!$content || !str_contains($content, '</body>')) {
+        if (! $content || ! str_contains($content, '</body>')) {
             return $response;
         }
 
@@ -210,7 +210,7 @@ final class ProfileRequest
             }
 
             return $data;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return [];
         }
     }

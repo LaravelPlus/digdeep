@@ -31,13 +31,13 @@ final class ListSourceFilesTool implements Tool
     {
         $dir = $this->sanitizePath($request['directory']);
 
-        if (!$dir) {
+        if (! $dir) {
             return 'Error: Only app/ and resources/js/ directories may be listed.';
         }
 
         $fullPath = base_path($dir);
 
-        if (!is_dir($fullPath)) {
+        if (! is_dir($fullPath)) {
             return "Error: Directory not found: {$dir}";
         }
 

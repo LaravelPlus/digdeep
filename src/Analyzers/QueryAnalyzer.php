@@ -42,7 +42,7 @@ final class QueryAnalyzer
 
             $key = $normalized.'|'.$caller;
 
-            if (!isset($groups[$key])) {
+            if (! isset($groups[$key])) {
                 $groups[$key] = [
                     'pattern' => $normalized,
                     'count' => 0,
@@ -54,7 +54,7 @@ final class QueryAnalyzer
             $groups[$key]['count']++;
             $groups[$key]['total_time_ms'] += $q['time_ms'] ?? 0;
 
-            if ($caller && !in_array($caller, $groups[$key]['callers'])) {
+            if ($caller && ! in_array($caller, $groups[$key]['callers'])) {
                 $groups[$key]['callers'][] = $caller;
             }
         }
@@ -166,12 +166,12 @@ final class QueryAnalyzer
             if (preg_match_all('/\bWHERE\b.*?[`"]?(\w+)[`"]?\s*(?:=|>|<|LIKE|IN)\s/i', $sql, $whereMatches)) {
                 // Extract table name
                 $table = self::extractTable($sql);
-                if (!$table || !isset($indexedColumns[$table])) {
+                if (! $table || ! isset($indexedColumns[$table])) {
                     continue;
                 }
 
                 foreach ($whereMatches[1] as $column) {
-                    if (!in_array($column, $indexedColumns[$table]) && $column !== 'id') {
+                    if (! in_array($column, $indexedColumns[$table]) && $column !== 'id') {
                         $results[] = [
                             'sql' => $sql,
                             'table' => $table,
@@ -215,7 +215,7 @@ final class QueryAnalyzer
             $hints[] = [
                 'severity' => 'warning',
                 'type' => 'n_plus_one',
-                'message' => "N+1 detected: {$np['count']}x repeated query" . ($np['table'] ? " on '{$np['table']}'" : ''),
+                'message' => "N+1 detected: {$np['count']}x repeated query".($np['table'] ? " on '{$np['table']}'" : ''),
                 'suggestion' => $np['suggestion'] ?? 'Consider eager loading this relationship',
                 'details' => ['pattern' => $np['pattern'], 'count' => $np['count']],
             ];
@@ -233,7 +233,7 @@ final class QueryAnalyzer
         }
 
         // Missing indexes
-        if (!empty($schema)) {
+        if (! empty($schema)) {
             $missingIndexes = self::detectMissingIndexes($queries, $schema);
             foreach ($missingIndexes as $mi) {
                 $hints[] = [

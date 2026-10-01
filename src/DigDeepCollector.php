@@ -12,10 +12,10 @@ use LaravelPlus\DigDeep\Collectors\HttpClientCollector;
 use LaravelPlus\DigDeep\Collectors\InertiaCollector;
 use LaravelPlus\DigDeep\Collectors\JobCollector;
 use LaravelPlus\DigDeep\Collectors\LifecycleCollector;
+use LaravelPlus\DigDeep\Collectors\LogCollector;
 use LaravelPlus\DigDeep\Collectors\MailCollector;
 use LaravelPlus\DigDeep\Collectors\MiddlewareCollector;
 use LaravelPlus\DigDeep\Collectors\ModelCollector;
-use LaravelPlus\DigDeep\Collectors\LogCollector;
 use LaravelPlus\DigDeep\Collectors\NotificationCollector;
 use LaravelPlus\DigDeep\Collectors\QueryCollector;
 use LaravelPlus\DigDeep\Collectors\ScheduledTaskCollector;
@@ -84,19 +84,19 @@ final class DigDeepCollector
         $requestStart = defined('LARAVEL_START') ? LARAVEL_START : $this->startTime;
         $this->lifecycleCollector = new LifecycleCollector($requestStart, $this->startTime, $this->startMemory);
 
-        $this->queryCollector = new QueryCollector();
-        $this->eventCollector = new EventCollector();
-        $this->viewCollector = new ViewCollector();
-        $this->cacheCollector = new CacheCollector();
-        $this->mailCollector = new MailCollector();
-        $this->httpClientCollector = new HttpClientCollector();
-        $this->jobCollector = new JobCollector();
-        $this->inertiaCollector = new InertiaCollector();
-        $this->modelCollector = new ModelCollector();
-        $this->middlewareCollector = new MiddlewareCollector();
-        $this->commandCollector = new CommandCollector();
-        $this->scheduledTaskCollector = new ScheduledTaskCollector();
-        $this->notificationCollector = new NotificationCollector();
+        $this->queryCollector = new QueryCollector;
+        $this->eventCollector = new EventCollector;
+        $this->viewCollector = new ViewCollector;
+        $this->cacheCollector = new CacheCollector;
+        $this->mailCollector = new MailCollector;
+        $this->httpClientCollector = new HttpClientCollector;
+        $this->jobCollector = new JobCollector;
+        $this->inertiaCollector = new InertiaCollector;
+        $this->modelCollector = new ModelCollector;
+        $this->middlewareCollector = new MiddlewareCollector;
+        $this->commandCollector = new CommandCollector;
+        $this->scheduledTaskCollector = new ScheduledTaskCollector;
+        $this->notificationCollector = new NotificationCollector;
         $this->logCollector = new LogCollector($this->startTime);
 
         $this->lifecycleCollector->listen();
@@ -146,8 +146,8 @@ final class DigDeepCollector
 
         $this->requestData['auth_user'] = match (true) {
             method_exists($user, 'getAuthIdentifier') => [
-                'id'    => $user->getAuthIdentifier(),
-                'name'  => $user->name ?? null,
+                'id' => $user->getAuthIdentifier(),
+                'name' => $user->name ?? null,
                 'email' => $user->email ?? null,
             ],
             is_scalar($user) => $user,

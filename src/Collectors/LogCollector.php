@@ -20,7 +20,7 @@ final class LogCollector
         Event::listen(MessageLogged::class, function (MessageLogged $event): void {
             $contextStr = '';
 
-            if (!empty($event->context)) {
+            if (! empty($event->context)) {
                 try {
                     $encoded = json_encode($event->context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
                     $contextStr = $encoded !== false ? $encoded : '';
@@ -30,7 +30,7 @@ final class LogCollector
             }
 
             $this->logs[] = [
-                'level'   => $event->level,
+                'level' => $event->level,
                 'message' => (string) $event->message,
                 'context' => $contextStr,
                 'time_ms' => round((microtime(true) - $this->startTime) * 1000, 2),
