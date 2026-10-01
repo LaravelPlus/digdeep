@@ -13,7 +13,7 @@ final class Authorize
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!DigDeep::check($request)) {
+        if (! DigDeep::check($request)) {
             abort(403);
         }
 

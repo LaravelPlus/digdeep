@@ -65,22 +65,22 @@ final class DigDeep
      *       ['label' => '+ ustvari registrirano', 'url' => '/dev/fixtures/voucher/registered'],
      *   ]);
      *
-     * @param list<array{field: string, label: string, value: mixed, variations?: list<mixed>}> $fields
-     * @param list<array{label: string, url: string}> $actions
+     * @param  list<array{field: string, label: string, value: mixed, variations?: list<mixed>}>  $fields
+     * @param  list<array{label: string, url: string}>  $actions
      */
     public static function fixture(string $key, string $label, array $fields, array $actions = []): void
     {
         if (! app()->isProduction()) {
             self::$fixtures[$key] = [
-                'label'   => $label,
+                'label' => $label,
                 'actions' => $actions,
-                'fields'  => array_map(function (array $f): array {
+                'fields' => array_map(function (array $f): array {
                     $value = $f['value'];
 
                     return [
-                        'field'      => $f['field'],
-                        'label'      => $f['label'],
-                        'value'      => $value instanceof Closure ? $value() : $value,
+                        'field' => $f['field'],
+                        'label' => $f['label'],
+                        'value' => $value instanceof Closure ? $value() : $value,
                         'variations' => $f['variations'] ?? [],
                     ];
                 }, $fields),

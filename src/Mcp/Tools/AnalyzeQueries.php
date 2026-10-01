@@ -25,13 +25,13 @@ final class AnalyzeQueries extends Tool
     {
         $id = $request->get('id');
 
-        if (!$id) {
+        if (! $id) {
             return Response::error('The "id" parameter is required.');
         }
 
         $profile = $this->storage->find($id);
 
-        if (!$profile) {
+        if (! $profile) {
             return Response::error("Profile not found: {$id}");
         }
 
@@ -94,7 +94,7 @@ final class AnalyzeQueries extends Tool
                     'columns' => collect($columns)->map(fn ($c) => [
                         'name' => $c->name,
                         'type' => $c->type,
-                        'nullable' => !$c->notnull,
+                        'nullable' => ! $c->notnull,
                         'pk' => (bool) $c->pk,
                         'default' => $c->dflt_value,
                     ])->all(),

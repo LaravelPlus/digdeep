@@ -106,10 +106,10 @@ final class LifecycleCollector
 
         // Controller + View rendering: routeMatched → middlewareDone
         if ($this->routeMatched !== null && $this->middlewareDone !== null) {
-            $firstView = !empty($this->viewTimestamps) ? min($this->viewTimestamps) : null;
-            $lastView = !empty($this->viewTimestamps) ? max($this->viewTimestamps) : null;
-            $firstViewMemory = !empty($this->viewMemorySnapshots) ? $this->viewMemorySnapshots[0] : null;
-            $lastViewMemory = !empty($this->viewMemorySnapshots) ? end($this->viewMemorySnapshots) : null;
+            $firstView = ! empty($this->viewTimestamps) ? min($this->viewTimestamps) : null;
+            $lastView = ! empty($this->viewTimestamps) ? max($this->viewTimestamps) : null;
+            $firstViewMemory = ! empty($this->viewMemorySnapshots) ? $this->viewMemorySnapshots[0] : null;
+            $lastViewMemory = ! empty($this->viewMemorySnapshots) ? end($this->viewMemorySnapshots) : null;
 
             if ($firstView !== null && $lastView !== null) {
                 // Controller: routeMatched → firstView

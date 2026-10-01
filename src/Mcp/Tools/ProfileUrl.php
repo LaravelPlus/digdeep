@@ -26,13 +26,13 @@ final class ProfileUrl extends Tool
     {
         $url = $request->get('url');
 
-        if (!$url) {
+        if (! $url) {
             return Response::error('The "url" parameter is required.');
         }
 
         $method = mb_strtoupper($request->get('method', 'GET'));
 
-        $collector = new DigDeepCollector();
+        $collector = new DigDeepCollector;
         $collector->startRequest();
 
         $httpRequest = HttpRequest::create($url, $method);

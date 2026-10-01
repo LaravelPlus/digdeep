@@ -38,7 +38,7 @@ final class DashboardController extends Controller
     {
         $profile = $this->storage->find($id);
 
-        if (!$profile) {
+        if (! $profile) {
             abort(404, 'Profile not found');
         }
 
@@ -99,10 +99,10 @@ final class DashboardController extends Controller
         foreach ($registeredRoutes as $key => $rr) {
             $uriIndex[$key] = $key; // key is already "METHOD /uri"
 
-            if (!empty($rr['name'])) {
+            if (! empty($rr['name'])) {
                 $nameIndex[$rr['method'].':'.$rr['name']] = $key;
             }
-            if (!empty($rr['action'])) {
+            if (! empty($rr['action'])) {
                 $actionIndex[$rr['method'].':'.$rr['action']] = $key;
             }
             $patternIndex[$rr['method']][] = ['pattern' => $rr['pattern'], 'key' => $key];
@@ -115,7 +115,7 @@ final class DashboardController extends Controller
             $routeName = $data['route']['name'] ?? null;
             $routeAction = $data['route']['action'] ?? null;
             $lifecycle = $data['lifecycle'] ?? [];
-            $hasLifecycle = !empty($lifecycle) && !empty($lifecycle['phases']);
+            $hasLifecycle = ! empty($lifecycle) && ! empty($lifecycle['phases']);
 
             $profileEntry = [
                 'id' => $p['id'],
@@ -239,7 +239,7 @@ final class DashboardController extends Controller
                     $middleware,
                     fn ($mw) => is_string($mw) && str_contains(mb_strtolower($mw), 'csrf'),
                 );
-                if (!$hasVerifyCsrf) {
+                if (! $hasVerifyCsrf) {
                     $securityIssues[] = [
                         'type' => 'warning',
                         'category' => 'CSRF',
@@ -250,7 +250,7 @@ final class DashboardController extends Controller
             }
 
             $responseHeaders = $data['response']['headers'] ?? [];
-            if (!isset($responseHeaders['x-content-type-options'])) {
+            if (! isset($responseHeaders['x-content-type-options'])) {
                 $securityIssues[] = [
                     'type' => 'info',
                     'category' => 'Headers',
@@ -293,7 +293,7 @@ final class DashboardController extends Controller
         $routeAudits = [];
         foreach ($profiles as $p) {
             $key = $p['method'].' '.$p['url'];
-            if (!isset($routeAudits[$key])) {
+            if (! isset($routeAudits[$key])) {
                 $routeAudits[$key] = [
                     'method' => $p['method'],
                     'url' => $p['url'],
@@ -314,9 +314,9 @@ final class DashboardController extends Controller
             $routeAudits[$key]['statuses'][] = (int) $p['status_code'];
         }
 
-        $durationThreshold  = (int) config('digdeep.thresholds.duration_ms', 500);
+        $durationThreshold = (int) config('digdeep.thresholds.duration_ms', 500);
         $queryCountThreshold = (int) config('digdeep.thresholds.query_count', 20);
-        $memoryThreshold    = (float) config('digdeep.thresholds.memory_peak_mb', 64);
+        $memoryThreshold = (float) config('digdeep.thresholds.memory_peak_mb', 64);
         $queryTimeThreshold = (float) config('digdeep.thresholds.query_time_ms', 200);
 
         foreach ($routeAudits as &$audit) {
@@ -324,9 +324,9 @@ final class DashboardController extends Controller
             $audit['min_duration'] = round(min($audit['durations']), 1);
             $audit['max_duration'] = round(max($audit['durations']), 1);
             $audit['p95_duration'] = $this->percentile($audit['durations'], 0.95);
-            $audit['avg_queries']  = round(array_sum($audit['queries']) / count($audit['queries']), 1);
-            $audit['max_queries']  = max($audit['queries']);
-            $audit['error_rate']   = round(count(array_filter($audit['statuses'], fn ($s) => $s >= 400)) / count($audit['statuses']) * 100);
+            $audit['avg_queries'] = round(array_sum($audit['queries']) / count($audit['queries']), 1);
+            $audit['max_queries'] = max($audit['queries']);
+            $audit['error_rate'] = round(count(array_filter($audit['statuses'], fn ($s) => $s >= 400)) / count($audit['statuses']) * 100);
             unset($audit['durations'], $audit['queries']);
             $audit['statuses'] = array_unique($audit['statuses']);
             sort($audit['statuses']);
@@ -341,11 +341,11 @@ final class DashboardController extends Controller
 
             $score = 100;
             foreach ($checks as $check) {
-                if (!$check['pass']) {
+                if (! $check['pass']) {
                     $score -= $check['severity'] === 'critical' ? 25 : 15;
                 }
             }
-            $audit['score']  = max(0, $score);
+            $audit['score'] = max(0, $score);
             $audit['checks'] = $checks;
         }
 
@@ -370,7 +370,7 @@ final class DashboardController extends Controller
         $errors = [];
         foreach ($profiles as $p) {
             $exception = $p['data']['exception'] ?? null;
-            if (!$exception) {
+            if (! $exception) {
                 continue;
             }
 
@@ -394,7 +394,7 @@ final class DashboardController extends Controller
         $errorsByClass = [];
         foreach ($errors as $err) {
             $class = $err['class'];
-            if (!isset($errorsByClass[$class])) {
+            if (! isset($errorsByClass[$class])) {
                 $errorsByClass[$class] = [
                     'class' => $class,
                     'count' => 0,
@@ -451,7 +451,7 @@ final class DashboardController extends Controller
                 if (preg_match_all('/\b(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+[`"]?(\w+)[`"]?/i', $sql, $matches)) {
                     foreach ($matches[1] as $table) {
                         $table = mb_strtolower($table);
-                        if (!isset($tableAccess[$table])) {
+                        if (! isset($tableAccess[$table])) {
                             $tableAccess[$table] = ['reads' => 0, 'writes' => 0, 'total_time' => 0];
                         }
                         if (str_starts_with($upper, 'SELECT') || str_starts_with($upper, 'PRAGMA')) {
@@ -489,7 +489,7 @@ final class DashboardController extends Controller
             $tables = DB::select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
             foreach ($tables as $table) {
                 // Validate table name contains only safe identifier characters before embedding in PRAGMA
-                if (!preg_match('/^\w+$/', $table->name)) {
+                if (! preg_match('/^\w+$/', $table->name)) {
                     continue;
                 }
 
@@ -501,7 +501,7 @@ final class DashboardController extends Controller
                 // Get index details (columns per index)
                 $indexDetails = [];
                 foreach ($indexes as $idx) {
-                    if (!preg_match('/^\w+$/', $idx->name)) {
+                    if (! preg_match('/^\w+$/', $idx->name)) {
                         continue;
                     }
 
@@ -518,7 +518,7 @@ final class DashboardController extends Controller
                     'columns' => collect($columns)->map(fn ($c) => [
                         'name' => $c->name,
                         'type' => $c->type,
-                        'nullable' => !$c->notnull,
+                        'nullable' => ! $c->notnull,
                         'pk' => (bool) $c->pk,
                         'default' => $c->dflt_value,
                     ])->all(),
@@ -586,7 +586,7 @@ final class DashboardController extends Controller
             $duration = (float) $p['duration_ms'];
             $status = (int) $p['status_code'];
 
-            if (!isset($routeMap[$key])) {
+            if (! isset($routeMap[$key])) {
                 $routeMap[$key] = [
                     'method' => $p['method'],
                     'url' => $p['url'],
@@ -754,31 +754,31 @@ final class DashboardController extends Controller
 
         for ($i = $matchCount - 1; $i >= 0 && count($entries) < $maxEntries; $i--) {
             $datetime = $matches[1][$i][0];
-            $level    = strtolower($matches[2][$i][0]);
-            $offset   = (int) $matches[0][$i][1];
+            $level = strtolower($matches[2][$i][0]);
+            $offset = (int) $matches[0][$i][1];
 
             // Grab the rest of the entry (up to next entry start)
             $nextOffset = ($i + 1 < $matchCount) ? (int) $matches[0][$i + 1][1] : strlen($content);
-            $fullEntry  = substr($content, $offset, $nextOffset - $offset);
-            $firstLine  = $matches[3][$i][0];
+            $fullEntry = substr($content, $offset, $nextOffset - $offset);
+            $firstLine = $matches[3][$i][0];
 
             // Strip the stack trace from the first line message
             $messageEnd = strpos($firstLine, '{');
-            $message    = $messageEnd !== false ? rtrim(substr($firstLine, 0, $messageEnd)) : rtrim($firstLine);
-            $context    = $messageEnd !== false ? substr($firstLine, $messageEnd) : '';
+            $message = $messageEnd !== false ? rtrim(substr($firstLine, 0, $messageEnd)) : rtrim($firstLine);
+            $context = $messageEnd !== false ? substr($firstLine, $messageEnd) : '';
 
             // Detect if there's a stacktrace block
             $stacktrace = '';
             if (str_contains($fullEntry, '[stacktrace]')) {
-                $stStart    = strpos($fullEntry, '[stacktrace]');
+                $stStart = strpos($fullEntry, '[stacktrace]');
                 $stacktrace = trim(substr($fullEntry, $stStart));
             }
 
             $entries[] = [
-                'datetime'   => $datetime,
-                'level'      => $level,
-                'message'    => $message,
-                'context'    => $context,
+                'datetime' => $datetime,
+                'level' => $level,
+                'message' => $message,
+                'context' => $context,
                 'stacktrace' => $stacktrace,
             ];
         }
@@ -835,7 +835,7 @@ final class DashboardController extends Controller
                     $prefix = explode('.', $key)[0];
                 }
 
-                if (!isset($keyPatterns[$prefix])) {
+                if (! isset($keyPatterns[$prefix])) {
                     $keyPatterns[$prefix] = ['hits' => 0, 'misses' => 0, 'writes' => 0, 'total' => 0];
                 }
                 $keyPatterns[$prefix]['total']++;

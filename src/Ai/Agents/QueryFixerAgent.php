@@ -10,6 +10,7 @@ use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasStructuredOutput;
 use Laravel\Ai\Contracts\HasTools;
+use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Promptable;
 use LaravelPlus\DigDeep\Ai\Tools\ListSourceFilesTool;
 use LaravelPlus\DigDeep\Ai\Tools\ReadSourceFileTool;
@@ -51,14 +52,14 @@ INSTRUCTIONS;
     /**
      * Get the tools available to the agent.
      *
-     * @return \Laravel\Ai\Contracts\Tool[]
+     * @return Tool[]
      */
     #[Override]
     public function tools(): iterable
     {
         return [
-            new ReadSourceFileTool(),
-            new ListSourceFilesTool(),
+            new ReadSourceFileTool,
+            new ListSourceFilesTool,
         ];
     }
 

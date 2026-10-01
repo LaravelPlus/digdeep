@@ -31,13 +31,13 @@ final class WriteSourceFileTool implements Tool
     {
         $path = $this->sanitizePath($request['path']);
 
-        if (!$path) {
+        if (! $path) {
             return 'Error: Access denied. Only files under app/ may be modified.';
         }
 
         $fullPath = base_path($path);
 
-        if (!file_exists($fullPath) || !is_file($fullPath)) {
+        if (! file_exists($fullPath) || ! is_file($fullPath)) {
             return "Error: File not found: {$path}";
         }
 
@@ -45,7 +45,7 @@ final class WriteSourceFileTool implements Tool
         $newCode = $request['new_code'];
         $content = file_get_contents($fullPath);
 
-        if (!str_contains($content, $oldCode)) {
+        if (! str_contains($content, $oldCode)) {
             return "Error: The specified old_code was not found in {$path}. Verify it matches exactly, including whitespace.";
         }
 

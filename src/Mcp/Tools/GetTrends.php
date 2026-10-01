@@ -24,7 +24,7 @@ final class GetTrends extends Tool
         $query = DigDeepProfile::query()->oldest();
 
         if ($route) {
-            $query->where('url', 'LIKE', '%' . $route . '%');
+            $query->where('url', 'LIKE', '%'.$route.'%');
         }
 
         match ($range) {

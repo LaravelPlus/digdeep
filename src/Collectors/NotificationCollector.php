@@ -19,7 +19,7 @@ final class NotificationCollector
             $notifiable = get_class($event->notifiable);
 
             if (method_exists($event->notifiable, 'getKey')) {
-                $notifiable .= ':' . $event->notifiable->getKey();
+                $notifiable .= ':'.$event->notifiable->getKey();
             }
 
             $this->notifications[] = [
@@ -38,7 +38,7 @@ final class NotificationCollector
                 array_reverse($this->notifications, preserve_keys: true),
                 fn ($n) => $n['notification'] === $notificationClass
                     && $n['channel'] === $channel
-                    && !$n['sent'],
+                    && ! $n['sent'],
             );
 
             if ($index !== null) {

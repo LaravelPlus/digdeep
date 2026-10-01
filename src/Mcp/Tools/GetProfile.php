@@ -22,13 +22,13 @@ final class GetProfile extends Tool
     {
         $id = $request->get('id');
 
-        if (!$id) {
+        if (! $id) {
             return Response::error('The "id" parameter is required.');
         }
 
         $profile = $this->storage->find($id);
 
-        if (!$profile) {
+        if (! $profile) {
             return Response::error("Profile not found: {$id}");
         }
 

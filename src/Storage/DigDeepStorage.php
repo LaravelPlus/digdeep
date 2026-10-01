@@ -39,7 +39,7 @@ final class DigDeepStorage
 
         // Check thresholds and auto-tag
         $exceeded = $this->checkThresholds($id, $data);
-        if (!empty($exceeded)) {
+        if (! empty($exceeded)) {
             $tagMap = [
                 'duration_ms' => 'slow',
                 'query_count' => 'query-heavy',
@@ -91,7 +91,7 @@ final class DigDeepStorage
     {
         $profile = DigDeepProfile::query()->find($id);
 
-        if (!$profile) {
+        if (! $profile) {
             return null;
         }
 
@@ -179,7 +179,7 @@ final class DigDeepStorage
         }
 
         if (isset($criteria['tag']) && $criteria['tag'] !== '') {
-            $query->where('tags', 'LIKE', '%' . $criteria['tag'] . '%');
+            $query->where('tags', 'LIKE', '%'.$criteria['tag'].'%');
         }
 
         if (isset($criteria['date_from'])) {
@@ -191,7 +191,7 @@ final class DigDeepStorage
         }
 
         if (isset($criteria['route']) && $criteria['route'] !== '') {
-            $query->where('url', 'LIKE', '%' . $criteria['route'] . '%');
+            $query->where('url', 'LIKE', '%'.$criteria['route'].'%');
         }
 
         if (isset($criteria['has_errors']) && $criteria['has_errors']) {
@@ -240,7 +240,7 @@ final class DigDeepStorage
                 $existing = $profile->tags ?? '';
                 $existingTags = array_filter(array_map('trim', explode(',', $existing)));
 
-                if (!in_array($tag, $existingTags)) {
+                if (! in_array($tag, $existingTags)) {
                     $existingTags[] = $tag;
                     $profile->update(['tags' => implode(', ', $existingTags)]);
                 }
@@ -291,7 +291,7 @@ final class DigDeepStorage
             COALESCE(MAX(query_count), 0) as most_queries
         ')->first();
 
-        if (!$result) {
+        if (! $result) {
             return [
                 'total' => 0,
                 'avg_duration' => 0,

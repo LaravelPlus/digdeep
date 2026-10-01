@@ -8,7 +8,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use LaravelPlus\DigDeep\Ai\Agents\ExceptionInvestigatorAgent;
+use LaravelPlus\DigDeep\Ai\Agents\QueryFixerAgent;
+use LaravelPlus\DigDeep\Ai\Tools\WriteSourceFileTool;
 use LaravelPlus\DigDeep\DigDeepCollector;
 use LaravelPlus\DigDeep\Models\DigDeepProfile;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
@@ -41,7 +45,7 @@ final class ApiController extends Controller
                 (isset($parsed['fragment']) ? '#'.$parsed['fragment'] : '');
         }
 
-        if (!str_starts_with($url, '/')) {
+        if (! str_starts_with($url, '/')) {
             $url = '/'.$url;
         }
 
@@ -139,7 +143,7 @@ final class ApiController extends Controller
     {
         $profile = $this->storage->find($id);
 
-        if (!$profile) {
+        if (! $profile) {
             return response()->json(['error' => 'Profile not found'], 404);
         }
 
@@ -173,7 +177,7 @@ final class ApiController extends Controller
     {
         $profile = $this->storage->find($id);
 
-        if (!$profile) {
+        if (! $profile) {
             return response()->json(['error' => 'Profile not found'], 404);
         }
 
@@ -276,7 +280,7 @@ final class ApiController extends Controller
         }
 
         // Only allow EXPLAIN on SELECT queries
-        if (!preg_match('/^\s*SELECT\b/i', $trimmed)) {
+        if (! preg_match('/^\s*SELECT\b/i', $trimmed)) {
             return response()->json(['error' => 'EXPLAIN only supports SELECT queries'], 400);
         }
 
@@ -309,31 +313,31 @@ final class ApiController extends Controller
     public function aiSuggest(Request $request): JsonResponse
     {
         $request->validate([
-            'sql'    => ['required', 'string', 'max:10000'],
-            'issue'  => ['required', 'string', 'in:n1,slow,select_star,duplicate'],
+            'sql' => ['required', 'string', 'max:10000'],
+            'issue' => ['required', 'string', 'in:n1,slow,select_star,duplicate'],
             'caller' => ['nullable', 'string', 'max:500'],
-            'time_ms'=> ['nullable', 'numeric'],
+            'time_ms' => ['nullable', 'numeric'],
         ]);
 
-        $hasSdk   = class_exists(\LaravelPlus\DigDeep\Ai\Agents\QueryFixerAgent::class)
+        $hasSdk = class_exists(QueryFixerAgent::class)
             && function_exists('Laravel\Ai\agent');
-        $apiKey   = config('digdeep.ai_key');
+        $apiKey = config('digdeep.ai_key');
         $provider = config('digdeep.ai_provider', 'openai');
 
-        if (!$hasSdk && !$apiKey) {
+        if (! $hasSdk && ! $apiKey) {
             return response()->json(['error' => 'No AI configured. Set DIGDEEP_AI_KEY in your .env file.'], 501);
         }
 
-        $sql    = $request->input('sql');
-        $issue  = $request->input('issue');
+        $sql = $request->input('sql');
+        $issue = $request->input('issue');
         $caller = $request->input('caller', '');
         $timeMs = $request->input('time_ms');
 
         $issueLabels = [
-            'n1'          => 'N+1 Query Pattern — this query appears to run in a loop, once per parent record.',
-            'slow'        => 'Slow Query — this query took '.round((float) $timeMs, 1).'ms, which exceeds the threshold.',
+            'n1' => 'N+1 Query Pattern — this query appears to run in a loop, once per parent record.',
+            'slow' => 'Slow Query — this query took '.round((float) $timeMs, 1).'ms, which exceeds the threshold.',
             'select_star' => 'SELECT * — this query fetches all columns unnecessarily.',
-            'duplicate'   => 'Duplicate Query — this exact query runs multiple times in the same request.',
+            'duplicate' => 'Duplicate Query — this exact query runs multiple times in the same request.',
         ];
 
         $prompt = <<<PROMPT
@@ -352,17 +356,17 @@ PROMPT;
                     config(["ai.providers.{$provider}.key" => $apiKey]);
                 }
 
-                $response = (new \LaravelPlus\DigDeep\Ai\Agents\QueryFixerAgent())->prompt(
+                $response = (new QueryFixerAgent)->prompt(
                     $prompt,
                     provider: $apiKey ? $provider : null,
                 );
 
                 return response()->json([
-                    'analysis'   => $response['analysis'],
+                    'analysis' => $response['analysis'],
                     'suggestion' => $response['suggestion'],
-                    'file_path'  => $response['file_path'] ?? null,
-                    'old_code'   => $response['old_code'] ?? null,
-                    'new_code'   => $response['new_code'] ?? null,
+                    'file_path' => $response['file_path'] ?? null,
+                    'old_code' => $response['old_code'] ?? null,
+                    'new_code' => $response['new_code'] ?? null,
                 ]);
             }
 
@@ -377,27 +381,27 @@ PROMPT;
     public function aiInvestigateException(Request $request): JsonResponse
     {
         $request->validate([
-            'class'   => ['required', 'string', 'max:500'],
+            'class' => ['required', 'string', 'max:500'],
             'message' => ['required', 'string', 'max:5000'],
-            'file'    => ['nullable', 'string', 'max:500'],
-            'line'    => ['nullable', 'integer'],
-            'trace'   => ['nullable', 'array', 'max:10'],
+            'file' => ['nullable', 'string', 'max:500'],
+            'line' => ['nullable', 'integer'],
+            'trace' => ['nullable', 'array', 'max:10'],
         ]);
 
-        $hasSdk   = class_exists(\LaravelPlus\DigDeep\Ai\Agents\ExceptionInvestigatorAgent::class)
+        $hasSdk = class_exists(ExceptionInvestigatorAgent::class)
             && function_exists('Laravel\Ai\agent');
-        $apiKey   = config('digdeep.ai_key');
+        $apiKey = config('digdeep.ai_key');
         $provider = config('digdeep.ai_provider', 'openai');
 
-        if (!$hasSdk && !$apiKey) {
+        if (! $hasSdk && ! $apiKey) {
             return response()->json(['error' => 'No AI configured. Set DIGDEEP_AI_KEY in your .env file.'], 501);
         }
 
-        $class   = $request->input('class');
+        $class = $request->input('class');
         $message = $request->input('message');
-        $file    = $request->input('file', '');
-        $line    = $request->input('line', '');
-        $trace   = collect($request->input('trace', []))
+        $file = $request->input('file', '');
+        $line = $request->input('line', '');
+        $trace = collect($request->input('trace', []))
             ->map(fn (array $f): string => ($f['file'] ?? '').':'.($f['line'] ?? '').' → '.($f['class'] ?? '').($f['function'] ? '::'.$f['function'].'()' : ''))
             ->implode("\n");
 
@@ -419,18 +423,18 @@ PROMPT;
                     config(["ai.providers.{$provider}.key" => $apiKey]);
                 }
 
-                $response = (new \LaravelPlus\DigDeep\Ai\Agents\ExceptionInvestigatorAgent())->prompt(
+                $response = (new ExceptionInvestigatorAgent)->prompt(
                     $prompt,
                     provider: $apiKey ? $provider : null,
                 );
 
                 return response()->json([
-                    'analysis'   => $response['analysis'],
+                    'analysis' => $response['analysis'],
                     'root_cause' => $response['root_cause'],
                     'suggestion' => $response['suggestion'],
-                    'file_path'  => $response['file_path'] ?? null,
-                    'old_code'   => $response['old_code'] ?? null,
-                    'new_code'   => $response['new_code'] ?? null,
+                    'file_path' => $response['file_path'] ?? null,
+                    'old_code' => $response['old_code'] ?? null,
+                    'new_code' => $response['new_code'] ?? null,
                 ]);
             }
 
@@ -446,14 +450,14 @@ PROMPT;
     {
         $request->validate([
             'file_path' => ['required', 'string', 'max:500'],
-            'old_code'  => ['required', 'string', 'max:10000'],
-            'new_code'  => ['required', 'string', 'max:10000'],
+            'old_code' => ['required', 'string', 'max:10000'],
+            'new_code' => ['required', 'string', 'max:10000'],
         ]);
 
-        $tool = new \LaravelPlus\DigDeep\Ai\Tools\WriteSourceFileTool();
+        $tool = new WriteSourceFileTool;
 
         $fakeRequest = new \Laravel\Ai\Tools\Request([
-            'path'     => $request->input('file_path'),
+            'path' => $request->input('file_path'),
             'old_code' => $request->input('old_code'),
             'new_code' => $request->input('new_code'),
         ]);
@@ -472,7 +476,7 @@ PROMPT;
         if ($provider === 'anthropic') {
             $model = config('digdeep.ai_model', 'claude-haiku-4-5-20251001');
 
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
+            $response = Http::withHeaders([
                 'x-api-key' => $apiKey,
                 'anthropic-version' => '2023-06-01',
             ])->post('https://api.anthropic.com/v1/messages', [
@@ -494,7 +498,7 @@ PROMPT;
         // Default: OpenAI
         $model = config('digdeep.ai_model', 'gpt-4o-mini');
 
-        $response = \Illuminate\Support\Facades\Http::withToken($apiKey)
+        $response = Http::withToken($apiKey)
             ->post('https://api.openai.com/v1/chat/completions', [
                 'model' => $model,
                 'messages' => [
@@ -534,7 +538,7 @@ PROMPT;
             'method' => $request->input('method'),
         ], fn ($v) => $v !== null);
 
-        $profiles = !empty($criteria) ? $this->storage->filter($criteria) : $this->storage->all();
+        $profiles = ! empty($criteria) ? $this->storage->filter($criteria) : $this->storage->all();
 
         if ($after) {
             $profiles = array_values(array_filter($profiles, fn ($p) => $p['created_at'] > $after));
@@ -649,7 +653,7 @@ PROMPT;
                 $totalErrors++;
             }
 
-            if (!isset($routeMap[$key])) {
+            if (! isset($routeMap[$key])) {
                 $routeMap[$key] = [
                     'method' => $p->method,
                     'url' => $p->url,

@@ -6,6 +6,7 @@ namespace LaravelPlus\DigDeep;
 
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Mcp\Facades\Mcp;
 use LaravelPlus\DigDeep\Commands\ClearCommand;
 use LaravelPlus\DigDeep\Commands\PruneCommand;
 use LaravelPlus\DigDeep\Commands\StatusCommand;
@@ -19,7 +20,7 @@ final class DigDeepServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/digdeep.php', 'digdeep');
 
-        if (!$this->isEnabled()) {
+        if (! $this->isEnabled()) {
             return;
         }
 
@@ -32,7 +33,7 @@ final class DigDeepServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        if (!$this->isEnabled()) {
+        if (! $this->isEnabled()) {
             return;
         }
 
@@ -63,8 +64,8 @@ final class DigDeepServiceProvider extends ServiceProvider
         }
 
         // Register MCP server if laravel/mcp is installed
-        if (class_exists(\Laravel\Mcp\Facades\Mcp::class)) {
-            \Laravel\Mcp\Facades\Mcp::local('digdeep', DigDeepServer::class);
+        if (class_exists(Mcp::class)) {
+            Mcp::local('digdeep', DigDeepServer::class);
         }
     }
 

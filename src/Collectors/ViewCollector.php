@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace LaravelPlus\DigDeep\Collectors;
 
 use Illuminate\Support\Facades\Event;
+use Illuminate\View\View;
 
 final class ViewCollector
 {
@@ -16,7 +17,7 @@ final class ViewCollector
         Event::listen('composing:*', function (string $eventName, array $payload): void {
             $view = $payload[0] ?? null;
 
-            if (!$view instanceof \Illuminate\View\View) {
+            if (! $view instanceof View) {
                 return;
             }
 
