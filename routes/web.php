@@ -7,7 +7,7 @@ use LaravelPlus\DigDeep\Controllers\ApiController;
 use LaravelPlus\DigDeep\Controllers\DashboardController;
 use LaravelPlus\DigDeep\Middleware\Authorize;
 
-Route::prefix('digdeep')->middleware(Authorize::class)->group(function () {
+Route::prefix('digdeep')->middleware(['web', Authorize::class])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('digdeep.dashboard');
     Route::get('/pipeline', [DashboardController::class, 'pipeline'])->name('digdeep.pipeline');
     Route::get('/security', [DashboardController::class, 'security'])->name('digdeep.security');

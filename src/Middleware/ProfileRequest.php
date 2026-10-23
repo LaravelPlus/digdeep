@@ -47,14 +47,14 @@ final class ProfileRequest
         $requestBody = '';
         $contentType = $request->header('Content-Type', '');
         if ($request->getContent() && (str_contains($contentType, 'json') || str_contains($contentType, 'text') || str_contains($contentType, 'xml') || str_contains($contentType, 'form'))) {
-            $requestBody = mb_substr((string) $request->getContent(), 0, 8192);
+            $requestBody = mb_substr($this->redactBody($request, $contentType), 0, 8192);
         }
 
         $this->collector->setRequest(
             $request->method(),
             '/'.$path,
             $this->sanitizeHeaders($request->headers->all()),
-            $request->except(['password', 'password_confirmation']),
+            $this->redact($request->all()),
             $requestBody,
             $request->ip(),
         );
@@ -213,6 +213,40 @@ final class ProfileRequest
         } catch (Throwable) {
             return [];
         }
+    }
+
+    private const SENSITIVE_KEYS = ['password', 'token', 'secret', 'card', 'cvv', 'cvc', 'api_key', 'apikey', 'authorization'];
+
+    /**
+     * Recursively mask values whose key looks sensitive.
+     */
+    private function redact(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (is_string($key) && Str::contains(Str::lower($key), self::SENSITIVE_KEYS)) {
+                $data[$key] = '[redacted]';
+            } elseif (is_array($value)) {
+                $data[$key] = $this->redact($value);
+            }
+        }
+
+        return $data;
+    }
+
+    private function redactBody(Request $request, string $contentType): string
+    {
+        if (str_contains($contentType, 'json')) {
+            $decoded = json_decode((string) $request->getContent(), true);
+
+            return is_array($decoded) ? (string) json_encode($this->redact($decoded)) : '[body omitted]';
+        }
+
+        if (str_contains($contentType, 'form')) {
+            return (string) json_encode($this->redact($request->post()));
+        }
+
+        // xml/text bodies cannot be reliably scrubbed
+        return '[body omitted]';
     }
 
     private function sanitizeHeaders(array $headers): array
