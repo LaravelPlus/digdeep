@@ -50,6 +50,17 @@ final class DigDeep
     }
 
     /**
+     * Whether endpoints that run artisan commands or rewrite source files are allowed.
+     * Unset config means local environment only.
+     */
+    public static function codeActionsAllowed(): bool
+    {
+        $allowed = config('digdeep.code_actions');
+
+        return $allowed === null ? app()->isLocal() : (bool) $allowed;
+    }
+
+    /**
      * Register a dev fixture group that appears in the DigDeep "Dev" tab.
      *
      * Only active when DigDeep is enabled. Safe to call unconditionally —
