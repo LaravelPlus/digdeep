@@ -1,0 +1,157 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Empty array passed to foreach\.$#'
+			identifier: foreach.emptyArray
+			count: 1
+			path: src/Analyzers/QueryAnalyzer.php
+
+		-
+			message: '#^Offset ''caller'' on array\{sql\: string, caller\: string, time_ms\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Analyzers/QueryAnalyzer.php
+
+		-
+			message: '#^Offset ''columns'' on array\{columns\: array\<int, string\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Analyzers/QueryAnalyzer.php
+
+		-
+			message: '#^Offset ''columns'' on array\{name\: string, indexes\: array\<int, array\{columns\: array\<int, string\>\}\>\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Analyzers/QueryAnalyzer.php
+
+		-
+			message: '#^Offset ''indexes'' on array\{name\: string, indexes\: array\<int, array\{columns\: array\<int, string\>\}\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Analyzers/QueryAnalyzer.php
+
+		-
+			message: '#^Offset ''pk'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Analyzers/QueryAnalyzer.php
+
+		-
+			message: '#^Offset ''time_ms'' on array\{sql\: string, caller\: string, time_ms\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Analyzers/QueryAnalyzer.php
+
+		-
+			message: '#^Offset ''function'' on array\{function\: string, line\?\: int, file\?\: string, class\?\: class\-string, type\?\: ''\-\>''\|''\:\:'', args\?\: list\<mixed\>, object\?\: object\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/DigDeepCollector.php
+
+		-
+			message: '#^Call to an undefined method LaravelPlus\\DigDeep\\Ai\\Agents\\ExceptionInvestigatorAgent\:\:prompt\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Http/Controllers/ApiController.php
+
+		-
+			message: '#^Call to an undefined method LaravelPlus\\DigDeep\\Ai\\Agents\\QueryFixerAgent\:\:prompt\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Http/Controllers/ApiController.php
+
+		-
+			message: '#^Instantiated class Laravel\\Ai\\Tools\\Request not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Http/Controllers/ApiController.php
+
+		-
+			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
+			identifier: argument.type
+			count: 3
+			path: src/Http/Controllers/ApiController.php
+
+		-
+			message: '#^Argument of an invalid type Illuminate\\Routing\\RouteCollectionInterface supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: src/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
+			identifier: argument.type
+			count: 15
+			path: src/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: src/Http/Middleware/ProfileRequest.php
+
+		-
+			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Http/Middleware/ProfileRequest.php
+
+		-
+			message: '#^Method LaravelPlus\\DigDeep\\Mcp\\Tools\\AnalyzeQueries\:\:schema\(\) should return array\<string, Illuminate\\Contracts\\JsonSchema\\JsonSchema\> but returns array\<string, Illuminate\\JsonSchema\\Types\\StringType\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Mcp/Tools/AnalyzeQueries.php
+
+		-
+			message: '#^Method LaravelPlus\\DigDeep\\Mcp\\Tools\\GetPerformance\:\:schema\(\) should return array\<string, Illuminate\\Contracts\\JsonSchema\\JsonSchema\> but returns array\<string, Illuminate\\JsonSchema\\Types\\StringType\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Mcp/Tools/GetPerformance.php
+
+		-
+			message: '#^Method LaravelPlus\\DigDeep\\Mcp\\Tools\\GetProfile\:\:schema\(\) should return array\<string, Illuminate\\Contracts\\JsonSchema\\JsonSchema\> but returns array\<string, Illuminate\\JsonSchema\\Types\\StringType\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Mcp/Tools/GetProfile.php
+
+		-
+			message: '#^Method LaravelPlus\\DigDeep\\Mcp\\Tools\\GetSlowestRoutes\:\:schema\(\) should return array\<string, Illuminate\\Contracts\\JsonSchema\\JsonSchema\> but returns array\<string, Illuminate\\JsonSchema\\Types\\IntegerType\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Mcp/Tools/GetSlowestRoutes.php
+
+		-
+			message: '#^Method LaravelPlus\\DigDeep\\Mcp\\Tools\\GetTrends\:\:schema\(\) should return array\<string, Illuminate\\Contracts\\JsonSchema\\JsonSchema\> but returns array\<string, Illuminate\\JsonSchema\\Types\\StringType\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Mcp/Tools/GetTrends.php
+
+		-
+			message: '#^Method LaravelPlus\\DigDeep\\Mcp\\Tools\\ListProfiles\:\:schema\(\) should return array\<string, Illuminate\\Contracts\\JsonSchema\\JsonSchema\> but returns array\<string, Illuminate\\JsonSchema\\Types\\IntegerType\|Illuminate\\JsonSchema\\Types\\NumberType\|Illuminate\\JsonSchema\\Types\\StringType\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Mcp/Tools/ListProfiles.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: src/Mcp/Tools/ProfileUrl.php
+
+		-
+			message: '#^Method LaravelPlus\\DigDeep\\Mcp\\Tools\\ProfileUrl\:\:schema\(\) should return array\<string, Illuminate\\Contracts\\JsonSchema\\JsonSchema\> but returns array\<string, Illuminate\\JsonSchema\\Types\\StringType\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Mcp/Tools/ProfileUrl.php
+
+		-
+			message: '#^Cannot call method toDateTimeString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Storage/DigDeepStorage.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,LaravelPlus\\DigDeep\\Models\\DigDeepRouteVisit\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Storage/DigDeepStorage.php

@@ -1,0 +1,14 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    level: 5
+    databaseMigrationsPath:
+        - database/migrations
+    paths:
+        - src
+        - routes
+    excludePaths:
+        # laravel/ai is optional and not installed in dev; these classes only load when it is
+        - src/Ai

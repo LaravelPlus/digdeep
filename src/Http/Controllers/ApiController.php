@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LaravelPlus\DigDeep\Controllers;
+namespace LaravelPlus\DigDeep\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -103,7 +103,7 @@ final class ApiController extends Controller
         );
 
         // Capture exception if response indicates an error
-        if ($response->getStatusCode() >= 400 && $response->exception ?? null) {
+        if ($response->getStatusCode() >= 400 && isset($response->exception)) {
             $this->collector->setException($response->exception);
         }
 
@@ -226,7 +226,7 @@ final class ApiController extends Controller
             mb_strlen($response->getContent() ?: ''),
         );
 
-        if ($response->getStatusCode() >= 400 && $response->exception ?? null) {
+        if ($response->getStatusCode() >= 400 && isset($response->exception)) {
             $this->collector->setException($response->exception);
         }
 

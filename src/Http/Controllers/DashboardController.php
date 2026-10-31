@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LaravelPlus\DigDeep\Controllers;
+namespace LaravelPlus\DigDeep\Http\Controllers;
 
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Route;

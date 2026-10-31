@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LaravelPlus\DigDeep\Middleware;
+namespace LaravelPlus\DigDeep\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;

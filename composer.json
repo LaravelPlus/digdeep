@@ -1,8 +1,30 @@
 {
     "name": "laravelplus/digdeep",
     "description": "A Laravel package that profiles URLs and shows the complete execution flow.",
+    "keywords": [
+        "laravel",
+        "profiler",
+        "debugbar",
+        "debug",
+        "performance",
+        "queries",
+        "n+1",
+        "mcp"
+    ],
     "type": "library",
     "license": "MIT",
+    "homepage": "https://github.com/LaravelPlus/digdeep",
+    "support": {
+        "issues": "https://github.com/LaravelPlus/digdeep/issues",
+        "source": "https://github.com/LaravelPlus/digdeep",
+        "security": "https://github.com/LaravelPlus/digdeep/security/policy"
+    },
+    "authors": [
+        {
+            "name": "nejcc",
+            "email": "nejc.cotic@gmail.com"
+        }
+    ],
     "autoload": {
         "psr-4": {
             "LaravelPlus\\DigDeep\\": "src/"
@@ -22,10 +44,11 @@
         "illuminate/http": "^12.0|^13.0"
     },
     "require-dev": {
+        "larastan/larastan": "^3.13",
         "laravel/mcp": "^0.5",
+        "laravel/pint": "^1.32",
         "orchestra/testbench": "^10.0|^11.0",
-        "pestphp/pest": "^4.0|^5.0",
-        "laravel/pint": "^1.32"
+        "pestphp/pest": "^4.0|^5.0"
     },
     "suggest": {
         "laravel/mcp": "Required to expose DigDeep data through the MCP server protocol.",
@@ -35,16 +58,19 @@
     "config": {
         "allow-plugins": {
             "pestphp/pest-plugin": true
-        }
+        },
+        "sort-packages": true
     },
     "scripts": {
         "test": "pest",
         "lint": "pint --test",
-        "format": "pint"
+        "format": "pint",
+        "analyse": "phpstan analyse --memory-limit=1G"
     },
     "autoload-dev": {
         "psr-4": {
             "LaravelPlus\\DigDeep\\Tests\\": "tests/"
         }
-    }
+    },
+    "prefer-stable": true
 }
