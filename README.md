@@ -27,6 +27,8 @@ composer require laravelplus/digdeep --dev
 php artisan migrate
 ```
 
+To customise the tables, publish the migrations first (`php artisan vendor:publish --tag=digdeep-migrations`).
+
 DigDeep auto-registers via its service provider. Open `/digdeep` in your browser.
 
 ## Configuration
@@ -199,9 +201,12 @@ Profiles are stored in the `digdeep_profiles` and `digdeep_route_visits` tables 
 ## Testing
 
 ```bash
-composer test   # Pest + Testbench
-composer lint   # Pint
+composer test     # Pest + Testbench
+composer lint     # Pint
+composer analyse  # Larastan
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ## Tech Stack
 
