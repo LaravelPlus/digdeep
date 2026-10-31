@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use LaravelPlus\DigDeep\DigDeep;
+use LaravelPlus\DigDeep\DigDeepCollector;
 use LaravelPlus\DigDeep\Models\DigDeepProfile;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -104,4 +107,22 @@ it('stores dev fixtures and resets them per request', function (): void {
 
     expect($data['dev_fixtures']['login']['fields'][0]['value'])->toBe('a@b.test')
         ->and(DigDeep::flushFixtures())->toBe([]);
+});
+
+it('registers listeners once and resets state between requests in long-lived workers', function (): void {
+    $collector = app(DigDeepCollector::class);
+
+    $collector->startRequest();
+    DB::select('select 1');
+    $collector->setException(new RuntimeException('first request'));
+    $listeners = count(Event::getListeners(QueryExecuted::class));
+
+    $collector->startRequest();
+    DB::select('select 2');
+    $data = $collector->finishRequest();
+
+    expect($data['queries'])->toHaveCount(1)
+        ->and($data['queries'][0]['sql'])->toBe('select 2')
+        ->and($data['exception'])->toBeNull()
+        ->and(Event::getListeners(QueryExecuted::class))->toHaveCount($listeners);
 });
