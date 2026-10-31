@@ -454,6 +454,10 @@ PROMPT;
             'new_code' => ['required', 'string', 'max:10000'],
         ]);
 
+        if (! class_exists(\Laravel\Ai\Tools\Request::class)) {
+            return response()->json(['error' => 'No AI configured. Set DIGDEEP_AI_KEY in your .env file.'], 501);
+        }
+
         $tool = new WriteSourceFileTool;
 
         $fakeRequest = new \Laravel\Ai\Tools\Request([
