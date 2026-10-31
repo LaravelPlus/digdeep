@@ -404,7 +404,7 @@ PROMPT;
         $file = $request->input('file', '');
         $line = $request->input('line', '');
         $trace = collect($request->input('trace', []))
-            ->map(fn (array $f): string => ($f['file'] ?? '').':'.($f['line'] ?? '').' → '.($f['class'] ?? '').($f['function'] ? '::'.$f['function'].'()' : ''))
+            ->map(fn (array $f): string => ($f['file'] ?? '').':'.($f['line'] ?? '').' → '.($f['class'] ?? '').(isset($f['function']) ? '::'.$f['function'].'()' : ''))
             ->implode("\n");
 
         $prompt = <<<PROMPT
