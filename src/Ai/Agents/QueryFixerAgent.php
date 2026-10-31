@@ -15,7 +15,6 @@ use Laravel\Ai\Promptable;
 use LaravelPlus\DigDeep\Ai\Tools\ListSourceFilesTool;
 use LaravelPlus\DigDeep\Ai\Tools\ReadSourceFileTool;
 use Override;
-use Stringable;
 
 #[MaxSteps(6)]
 #[MaxTokens(2048)]
@@ -27,7 +26,7 @@ final class QueryFixerAgent implements Agent, HasStructuredOutput, HasTools
      * Get the instructions that the agent should follow.
      */
     #[Override]
-    public function instructions(): Stringable|string
+    public function instructions(): string
     {
         return <<<'INSTRUCTIONS'
 You are a Laravel Eloquent and database performance expert embedded in a profiling tool.

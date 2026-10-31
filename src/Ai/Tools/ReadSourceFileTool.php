@@ -8,7 +8,6 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use Override;
-use Stringable;
 
 final class ReadSourceFileTool implements Tool
 {
@@ -20,7 +19,7 @@ final class ReadSourceFileTool implements Tool
      * Get the description of the tool's purpose.
      */
     #[Override]
-    public function description(): Stringable|string
+    public function description(): string
     {
         return 'Read a PHP or JS source file from the application to understand the code causing the query issue. Provide the path relative to the application root (e.g. app/Models/Hotel.php).';
     }
@@ -29,7 +28,7 @@ final class ReadSourceFileTool implements Tool
      * Execute the tool.
      */
     #[Override]
-    public function handle(Request $request): Stringable|string
+    public function handle(Request $request): string
     {
         $path = $this->sanitizePath($request['path']);
 

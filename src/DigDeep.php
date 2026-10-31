@@ -23,6 +23,9 @@ final class DigDeep
      */
     private static array $fixtures = [];
 
+    /** Forces the laravel/ai availability check; exists only so tests can simulate a missing SDK. */
+    public static ?bool $aiSdkAvailable = null;
+
     /**
      * Register the DigDeep authentication callback.
      */

@@ -63,3 +63,17 @@ it('combines findings into typed hints', function (): void {
 
     expect($types)->toContain('n_plus_one', 'select_star');
 });
+
+it('reports each unindexed column once, as a missing_index hint', function (): void {
+    $schema = [[
+        'name' => 'users',
+        'columns' => [['name' => 'id', 'pk' => true], ['name' => 'email', 'pk' => false]],
+        'indexes' => [],
+    ]];
+    $queries = [q('select id from users where email = ?'), q('select id from users where email = ? and id = ?')];
+
+    $hints = QueryAnalyzer::generateHints($queries, $schema);
+
+    expect($hints)->toHaveCount(1)
+        ->and($hints[0])->toMatchArray(['type' => 'missing_index', 'message' => "Column 'users.email' used in WHERE but not indexed"]);
+});

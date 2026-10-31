@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Schema;
 use LaravelPlus\DigDeep\Analyzers\QueryAnalyzer;
 
 it('reads the schema through the driver-agnostic Schema API', function (): void {
@@ -24,4 +25,10 @@ it('refuses to explain writes', function (): void {
 
 it('renders the database page', function (): void {
     $this->get('/digdeep/database')->assertOk();
+});
+
+it('returns an empty schema when introspection fails', function (): void {
+    Schema::shouldReceive('getTables')->andThrow(new RuntimeException('no introspection'));
+
+    expect(QueryAnalyzer::schema())->toBe([]);
 });

@@ -77,7 +77,7 @@ final class InertiaCollector
                         array_slice($value, 0, 10)
                     );
                     $result[$key][] = '... '.(count($value) - 10).' more items';
-                } elseif (is_array($value)) {
+                } else {
                     $result[$key] = $this->truncateProps($value, $maxDepth, $currentDepth + 1);
                 }
             } elseif (is_string($value) && mb_strlen($value) > 500) {
@@ -103,8 +103,6 @@ final class InertiaCollector
                 } else {
                     $summary[$key] = "array[{$count}]";
                 }
-            } elseif (is_object($value)) {
-                $summary[$key] = get_class($value);
             } elseif (is_string($value)) {
                 $summary[$key] = 'string('.mb_strlen($value).')';
             } elseif (is_bool($value)) {

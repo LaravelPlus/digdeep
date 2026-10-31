@@ -60,4 +60,4 @@ jobs:
           extensions: pdo_sqlite
           coverage: pcov
       - run: composer update --prefer-dist --no-interaction --no-progress
-      - run: vendor/bin/pest --coverage
+      - run: vendor/bin/pest --coverage --min=100

@@ -624,10 +624,6 @@ final class DashboardController extends Controller
 
     private function percentile(array $sorted, float $p): float
     {
-        if (empty($sorted)) {
-            return 0.0;
-        }
-
         $idx = (int) ceil(count($sorted) * $p) - 1;
 
         return round($sorted[max(0, $idx)], 1);
