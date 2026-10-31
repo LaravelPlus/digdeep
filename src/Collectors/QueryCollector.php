@@ -12,14 +12,16 @@ final class QueryCollector
     /** @var array<int, array{sql: string, bindings: array<mixed>, time_ms: float, start_offset_ms: float, caller: string}> */
     private array $queries = [];
 
-    public function listen(float $requestStartTime = 0.0): void
+    public function __construct(private float $requestStartTime = 0.0) {}
+
+    public function listen(): void
     {
-        DB::listen(function ($query) use ($requestStartTime): void {
+        DB::listen(function ($query): void {
             $caller = $this->findCaller();
 
             // DB::listen fires after the query completes; subtract duration to get start offset
-            $startOffsetMs = $requestStartTime > 0
-                ? max(0.0, (microtime(true) - $requestStartTime) * 1000 - $query->time)
+            $startOffsetMs = $this->requestStartTime > 0
+                ? max(0.0, (microtime(true) - $this->requestStartTime) * 1000 - $query->time)
                 : 0.0;
 
             $this->queries[] = [

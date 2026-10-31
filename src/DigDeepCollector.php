@@ -76,42 +76,63 @@ final class DigDeepCollector
 
     private LogCollector $logCollector;
 
+    private bool $listening = false;
+
     public function startRequest(): void
     {
         $this->startTime = microtime(true);
         $this->startMemory = memory_get_usage();
+        $this->requestData = $this->responseData = $this->routeData = $this->inertiaData = [];
+        $this->isAjax = false;
+        $this->exceptionData = null;
 
         $requestStart = defined('LARAVEL_START') ? LARAVEL_START : $this->startTime;
-        $this->lifecycleCollector = new LifecycleCollector($requestStart, $this->startTime, $this->startMemory);
 
-        $this->queryCollector = new QueryCollector;
-        $this->eventCollector = new EventCollector;
-        $this->viewCollector = new ViewCollector;
-        $this->cacheCollector = new CacheCollector;
-        $this->mailCollector = new MailCollector;
-        $this->httpClientCollector = new HttpClientCollector;
-        $this->jobCollector = new JobCollector;
-        $this->inertiaCollector = new InertiaCollector;
-        $this->modelCollector = new ModelCollector;
-        $this->middlewareCollector = new MiddlewareCollector;
-        $this->commandCollector = new CommandCollector;
-        $this->scheduledTaskCollector = new ScheduledTaskCollector;
-        $this->notificationCollector = new NotificationCollector;
-        $this->logCollector = new LogCollector($this->startTime);
+        $fresh = [
+            'lifecycleCollector' => new LifecycleCollector($requestStart, $this->startTime, $this->startMemory),
+            'modelCollector' => new ModelCollector,
+            'queryCollector' => new QueryCollector($this->startTime),
+            'eventCollector' => new EventCollector,
+            'viewCollector' => new ViewCollector,
+            'cacheCollector' => new CacheCollector,
+            'mailCollector' => new MailCollector,
+            'httpClientCollector' => new HttpClientCollector,
+            'jobCollector' => new JobCollector,
+            'commandCollector' => new CommandCollector,
+            'scheduledTaskCollector' => new ScheduledTaskCollector,
+            'notificationCollector' => new NotificationCollector,
+            'logCollector' => new LogCollector($this->startTime),
+            'inertiaCollector' => new InertiaCollector,
+            'middlewareCollector' => new MiddlewareCollector,
+        ];
 
-        $this->lifecycleCollector->listen();
-        $this->modelCollector->listen();
-        $this->queryCollector->listen($this->startTime);
-        $this->eventCollector->listen();
-        $this->viewCollector->listen();
-        $this->cacheCollector->listen();
-        $this->mailCollector->listen();
-        $this->httpClientCollector->listen();
-        $this->jobCollector->listen();
-        $this->commandCollector->listen();
-        $this->scheduledTaskCollector->listen();
-        $this->notificationCollector->listen();
-        $this->logCollector->listen();
+        // Long-lived workers (Octane, FrankenPHP) call this once per request: listeners are
+        // registered only the first time, later requests just reset the collectors' state.
+        foreach ($fresh as $property => $collector) {
+            if ($this->listening) {
+                self::resetFrom($this->{$property}, $collector);
+            } else {
+                $this->{$property} = $collector;
+
+                if (method_exists($collector, 'listen')) {
+                    $collector->listen();
+                }
+            }
+        }
+
+        $this->listening = true;
+    }
+
+    /**
+     * Copy a fresh instance's state into the one the listeners are bound to.
+     */
+    private static function resetFrom(object $target, object $fresh): void
+    {
+        (function (object $fresh): void {
+            foreach (get_object_vars($fresh) as $property => $value) {
+                $this->{$property} = $value;
+            }
+        })->call($target, $fresh);
     }
 
     public function markLifecyclePhase(string $name): void

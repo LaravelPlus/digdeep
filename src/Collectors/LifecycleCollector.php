@@ -28,9 +28,9 @@ final class LifecycleCollector
     private array $viewMemorySnapshots = [];
 
     public function __construct(
-        private readonly float $requestStart,
-        private readonly float $appStart,
-        private readonly int $appStartMemory,
+        private float $requestStart,
+        private float $appStart,
+        private int $appStartMemory,
     ) {}
 
     public function listen(): void

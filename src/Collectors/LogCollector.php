@@ -14,7 +14,7 @@ final class LogCollector
     /** @var array<int, array{level: string, message: string, context: string, time_ms: float}> */
     private array $logs = [];
 
-    public function __construct(private readonly float $startTime) {}
+    public function __construct(private float $startTime) {}
 
     public function listen(): void
     {
