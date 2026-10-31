@@ -5,31 +5,29 @@ A Laravel request profiler that captures the complete execution flow of every re
 ## Requirements
 
 - PHP 8.4+
-- Laravel 12+
-- `ext-pdo_sqlite`
+- Laravel 12 or 13
+- Any database Laravel supports (SQLite, MySQL/MariaDB, PostgreSQL). Profiles live in your default connection.
 
 ## Installation
 
-Add the package to your `composer.json` repositories:
+Until the package is on Packagist, add the GitHub repository to your app's `composer.json`:
 
 ```json
 {
     "repositories": [
-        {
-            "type": "path",
-            "url": "packages/laravelplus/digdeep"
-        }
+        { "type": "vcs", "url": "https://github.com/LaravelPlus/digdeep" }
     ]
 }
 ```
 
-Then install:
+Then install it as a dev dependency and run the migrations:
 
 ```bash
 composer require laravelplus/digdeep --dev
+php artisan migrate
 ```
 
-DigDeep auto-registers via its service provider. No further setup is needed.
+DigDeep auto-registers via its service provider. Open `/digdeep` in your browser.
 
 ## Configuration
 
@@ -39,15 +37,17 @@ Publish the config file:
 php artisan vendor:publish --tag=digdeep-config
 ```
 
-Available options in `config/digdeep.php`:
-
 | Option | Default | Description |
 |--------|---------|-------------|
-| `enabled` | `true` | Master on/off switch (env: `DIGDEEP_ENABLED`) |
-| `auto_profile` | `true` | Automatically profile every web request |
-| `storage_path` | `storage/digdeep/digdeep.sqlite` | SQLite database path |
-| `max_profiles` | `200` | Maximum stored profiles (auto-prunes oldest) |
-| `ignored_paths` | `[...]` | URL prefixes to skip profiling |
+| `enabled` | unset | Unset = on only in `local`/`testing`. `DIGDEEP_ENABLED=true/false` forces it. |
+| `show_debugbar` | `true` | Inject the floating toolbar into HTML pages (authorized viewers only) |
+| `code_actions` | unset | Artisan command box + AI "apply fix". Unset = `local` only (`DIGDEEP_CODE_ACTIONS`) |
+| `auto_profile` | `true` | Profile every web request |
+| `max_profiles` | `200` | Stored profiles kept (oldest pruned) |
+| `max_profile_size_kb` | `512` | Per-profile payload cap |
+| `thresholds.*` | see config | Auto-tag slow/heavy requests and fire `ThresholdExceeded` |
+| `ai_provider` / `ai_key` / `ai_model` | unset | Optional AI suggestions (`anthropic` or `openai`) |
+| `ignored_paths` | `[...]` | URL prefixes to skip |
 
 ## Usage
 
@@ -175,26 +175,32 @@ Every profiled request records:
 | **Performance** | Total duration (ms), peak memory (MB), query count, query time (ms) |
 | **Exceptions** | Class, message, file, line, stack trace (30 frames), previous exception |
 
-## Sensitive Data
+## Security
 
-DigDeep automatically sanitizes:
+DigDeep is a development tool. It records SQL, request data and session contents, and in `local` it can run artisan commands and edit files under `app/`.
 
-- `authorization`, `cookie`, and `set-cookie` headers are redacted
-- `password` and `password_confirmation` fields are excluded from payloads
-- Request/response bodies are truncated to prevent storage bloat
+- **Off outside `local`/`testing`** unless `DIGDEEP_ENABLED=true`.
+- **Access:** in `local`/`testing` everyone can open `/digdeep`. Elsewhere access is denied (404) unless you register a gate:
+
+  ```php
+  // AppServiceProvider::boot()
+  \LaravelPlus\DigDeep\DigDeep::auth(fn ($request) => $request->user()?->isAdmin() ?? false);
+  ```
+
+  The same gate decides who sees the debugbar.
+- **Code actions** (artisan runner, AI "apply fix") run only in `local` unless `DIGDEEP_CODE_ACTIONS=true`. Never enable them on a shared or public server.
+- **CSRF:** dashboard routes use the `web` middleware group, so every POST/DELETE needs the session CSRF token.
+- **Redaction:** keys containing `password`, `token`, `secret`, `card`, `cvv`, `cvc`, `api_key` or `authorization` are masked in payloads, JSON/form bodies and session values. The `authorization`, `proxy-authorization`, `cookie`, `set-cookie`, `x-xsrf-token`, `x-csrf-token`, `x-api-key` and `x-auth-token` headers are masked too. Text/XML bodies are not stored. SQL bindings are stored as-is, so don't profile against production data.
 
 ## Storage
 
-Profiles are stored in a local SQLite database at `storage/digdeep/digdeep.sqlite`. The database is created automatically on first use.
+Profiles are stored in the `digdeep_profiles` and `digdeep_route_visits` tables on your default connection. Only the latest `max_profiles` are kept. Use `php artisan digdeep:prune` or `digdeep:clear` to clean up manually.
 
-Auto-pruning keeps only the latest `max_profiles` entries (default: 200).
+## Testing
 
-## Environment Restriction
-
-By default, DigDeep only activates when `APP_ENV` is `local` or `testing`. To enable in other environments, set:
-
-```env
-DIGDEEP_ENABLED=true
+```bash
+composer test   # Pest + Testbench
+composer lint   # Pint
 ```
 
 ## Tech Stack

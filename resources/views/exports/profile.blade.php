@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DigDeep — Profile Report — {{ $data['profile']['method'] ?? '' }} {{ $data['profile']['url'] ?? '' }}</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3/dist/index.global.js" integrity="sha384-2ql948lIdLcGEE0/qxNiudyTjgauA3RDJERu5xW75kFCvSl5a9odyQYCb6tEjnmB" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.5.44/dist/vue.global.prod.js" integrity="sha384-tORx0bXmMnTC28EYQe1coaGZKSQupXQEYDBNex8xkzJ9iqUoNy9Y+VFBhVxi4kUr" crossorigin="anonymous"></script>
     <style type="text/tailwindcss">
         @theme {
             --font-sans: system-ui, ui-sans-serif, sans-serif;
@@ -310,7 +310,7 @@
 </div>
 
 <script>
-const DATA = {!! json_encode($data) !!};
+const DATA = {{ \Illuminate\Support\Js::from($data) }};
 const { createApp } = Vue;
 createApp({
     data() {

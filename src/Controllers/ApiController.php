@@ -10,9 +10,11 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Laravel\Ai\Promptable;
 use LaravelPlus\DigDeep\Ai\Agents\ExceptionInvestigatorAgent;
 use LaravelPlus\DigDeep\Ai\Agents\QueryFixerAgent;
 use LaravelPlus\DigDeep\Ai\Tools\WriteSourceFileTool;
+use LaravelPlus\DigDeep\DigDeep;
 use LaravelPlus\DigDeep\DigDeepCollector;
 use LaravelPlus\DigDeep\Models\DigDeepProfile;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
@@ -291,7 +293,7 @@ final class ApiController extends Controller
         }
 
         // Cache EXPLAIN plans for 5 minutes to avoid repeated queries
-        $cacheKey = 'digdeep:explain:'.md5($trimmed);
+        $cacheKey = 'digdeep:explain:'.DB::getDriverName().':'.md5($trimmed);
         $cached = cache()->get($cacheKey);
 
         if ($cached !== null) {
@@ -299,7 +301,8 @@ final class ApiController extends Controller
         }
 
         try {
-            $results = DB::select('EXPLAIN QUERY PLAN '.$trimmed);
+            $prefix = DB::getDriverName() === 'sqlite' ? 'EXPLAIN QUERY PLAN ' : 'EXPLAIN ';
+            $results = DB::select($prefix.$trimmed);
             $plan = array_map(fn ($row) => (array) $row, $results);
 
             cache()->put($cacheKey, $plan, 300);
@@ -319,10 +322,9 @@ final class ApiController extends Controller
             'time_ms' => ['nullable', 'numeric'],
         ]);
 
-        $hasSdk = class_exists(QueryFixerAgent::class)
-            && function_exists('Laravel\Ai\agent');
+        $hasSdk = $this->hasAiSdk();
         $apiKey = config('digdeep.ai_key');
-        $provider = config('digdeep.ai_provider', 'openai');
+        $provider = config('digdeep.ai_provider') ?? 'openai';
 
         if (! $hasSdk && ! $apiKey) {
             return response()->json(['error' => 'No AI configured. Set DIGDEEP_AI_KEY in your .env file.'], 501);
@@ -388,10 +390,9 @@ PROMPT;
             'trace' => ['nullable', 'array', 'max:10'],
         ]);
 
-        $hasSdk = class_exists(ExceptionInvestigatorAgent::class)
-            && function_exists('Laravel\Ai\agent');
+        $hasSdk = $this->hasAiSdk();
         $apiKey = config('digdeep.ai_key');
-        $provider = config('digdeep.ai_provider', 'openai');
+        $provider = config('digdeep.ai_provider') ?? 'openai';
 
         if (! $hasSdk && ! $apiKey) {
             return response()->json(['error' => 'No AI configured. Set DIGDEEP_AI_KEY in your .env file.'], 501);
@@ -448,11 +449,19 @@ PROMPT;
 
     public function aiApplyFix(Request $request): JsonResponse
     {
+        if (! DigDeep::codeActionsAllowed()) {
+            return response()->json(['error' => 'Code actions are disabled. Set DIGDEEP_CODE_ACTIONS=true to enable.'], 403);
+        }
+
         $request->validate([
             'file_path' => ['required', 'string', 'max:500'],
             'old_code' => ['required', 'string', 'max:10000'],
             'new_code' => ['required', 'string', 'max:10000'],
         ]);
+
+        if (! $this->hasAiSdk()) {
+            return response()->json(['error' => 'AI apply requires the laravel/ai package.'], 501);
+        }
 
         $tool = new WriteSourceFileTool;
 
@@ -474,7 +483,7 @@ PROMPT;
     private function callAiDirectly(string $provider, string $apiKey, string $prompt): string
     {
         if ($provider === 'anthropic') {
-            $model = config('digdeep.ai_model', 'claude-haiku-4-5-20251001');
+            $model = config('digdeep.ai_model') ?? 'claude-haiku-4-5-20251001';
 
             $response = Http::withHeaders([
                 'x-api-key' => $apiKey,
@@ -496,7 +505,7 @@ PROMPT;
         }
 
         // Default: OpenAI
-        $model = config('digdeep.ai_model', 'gpt-4o-mini');
+        $model = config('digdeep.ai_model') ?? 'gpt-4o-mini';
 
         $response = Http::withToken($apiKey)
             ->post('https://api.openai.com/v1/chat/completions', [
@@ -806,6 +815,10 @@ PROMPT;
 
     public function runCommand(Request $request): JsonResponse
     {
+        if (! DigDeep::codeActionsAllowed()) {
+            return response()->json(['error' => 'Code actions are disabled. Set DIGDEEP_CODE_ACTIONS=true to enable.'], 403);
+        }
+
         $request->validate([
             'command' => ['required', 'string', 'max:500'],
         ]);
@@ -816,7 +829,7 @@ PROMPT;
         $input = (string) preg_replace('/^php\s+artisan\s+/i', '', $input);
 
         // Block dangerous commands
-        $blocked = ['migrate:fresh', 'migrate:reset', 'db:wipe', 'optimize:clear', 'serve', 'tinker'];
+        $blocked = ['migrate:fresh', 'migrate:reset', 'migrate:refresh', 'migrate:rollback', 'db:wipe', 'db:seed', 'optimize:clear', 'serve', 'tinker', 'down', 'key:generate', 'env:decrypt', 'env:encrypt', 'queue:work', 'queue:listen', 'schedule:work', 'octane:start', 'reverb:start'];
         $commandName = strtolower(explode(' ', $input)[0]);
         foreach ($blocked as $b) {
             if ($commandName === $b) {
@@ -1071,9 +1084,18 @@ PROMPT;
         return round($sorted[max(0, $idx)], 1);
     }
 
+    /**
+     * Probe the trait our agents use: class_exists() on an agent would autoload it
+     * and fatal when laravel/ai is missing.
+     */
+    private function hasAiSdk(): bool
+    {
+        return trait_exists(Promptable::class);
+    }
+
     private function sanitizeHeaders(array $headers): array
     {
-        $sensitive = ['authorization', 'cookie', 'set-cookie'];
+        $sensitive = ['authorization', 'proxy-authorization', 'cookie', 'set-cookie', 'x-xsrf-token', 'x-csrf-token', 'x-api-key', 'x-auth-token'];
 
         foreach ($sensitive as $key) {
             if (isset($headers[$key])) {

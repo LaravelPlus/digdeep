@@ -1043,7 +1043,7 @@
                   $mixed   = $counts['hit'] > 0 && $counts['miss'] > 0;
                   $rowBg   = $allHit ? 'rgba(80,250,123,.04)' : ($anyMiss ? 'rgba(255,85,85,.04)' : 'transparent');
                 @endphp
-                <tr style="background:{{ $rowBg }}" title="{{ $cacheKey }}" onclick="navigator.clipboard&&navigator.clipboard.writeText('{{ addslashes($cacheKey) }}').then(function(){var el=event.currentTarget;el.style.opacity='.6';setTimeout(function(){el.style.opacity='1';},400);})" style="cursor:pointer;">
+                <tr style="background:{{ $rowBg }}" title="{{ $cacheKey }}" onclick="navigator.clipboard&&navigator.clipboard.writeText({{ \Illuminate\Support\Js::from($cacheKey) }}).then(function(){var el=event.currentTarget;el.style.opacity='.6';setTimeout(function(){el.style.opacity='1';},400);})" style="cursor:pointer;">
                   <td style="color:#f8f8f2;font-size:11px;word-break:break-all;">{{ $cacheKey }}</td>
                   <td style="text-align:center;color:{{ $counts['hit'] > 0 ? '#50fa7b' : '#44475a' }};">{{ $counts['hit'] ?: '—' }}</td>
                   <td style="text-align:center;color:{{ $counts['miss'] > 0 ? '#ff5555' : '#44475a' }};">{{ $counts['miss'] ?: '—' }}</td>
@@ -1975,7 +1975,7 @@
             <tbody>
               @foreach($group['fields'] as $field)
               @php $escapedValue = json_encode((string)$field['value']); @endphp
-              <tr style="cursor:pointer;" onclick="__dd_fillField('{{ $field['field'] }}', {{ $escapedValue }});__dd_flashRow(this);">
+              <tr style="cursor:pointer;" onclick="__dd_fillField({{ \Illuminate\Support\Js::from((string) $field['field']) }}, {{ $escapedValue }});__dd_flashRow(this);">
                 <td style="padding:5px 12px;color:#6272a4;font-size:10px;white-space:nowrap;width:1%;">{{ $field['label'] }}</td>
                 <td style="padding:5px 12px;color:#f1fa8c;font-size:11px;font-family:monospace;word-break:break-all;">
                   {{ $field['value'] }}
@@ -2923,7 +2923,7 @@
       if (data.root_cause) {
         html += '<span class="ai-section">Root Cause</span>' + __dd.escHtml(data.root_cause) + '\n\n';
       }
-      var text = (data.suggestion || '');
+      var text = __dd.escHtml(data.suggestion || '');
       html += text
         .replace(/^PROBLEM:/mg, '<span class="ai-section">Problem</span>')
         .replace(/^FIX:/mg, '<span class="ai-section">Fix</span>')
@@ -3301,7 +3301,7 @@
     row.dataset.idx = String(ajaxN - 1);
     row.style.cssText = 'display:grid;grid-template-columns:44px 1fr 44px 52px;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid rgba(68,71,90,.35);font-size:11px;cursor:pointer;transition:background .1s;';
     row.innerHTML =
-      '<span style="color:' + color + ';font-weight:700;font-size:10px;">' + method + '</span>'
+      '<span style="color:' + color + ';font-weight:700;font-size:10px;">' + escHtml(method) + '</span>'
       + '<span style="overflow:hidden;font-size:10.5px;" title="' + escHtml(url) + '">'
       +   (item.component ? '<span style="color:#50fa7b;display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(item.component) + '</span>' : '')
       +   '<span style="color:#6272a4;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(url) + '</span>'

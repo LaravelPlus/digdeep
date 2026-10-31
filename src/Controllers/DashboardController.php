@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace LaravelPlus\DigDeep\Controllers;
 
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\View;
 use LaravelPlus\DigDeep\Analyzers\QueryAnalyzer;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
-use Throwable;
 
 final class DashboardController extends Controller
 {
@@ -484,60 +482,7 @@ final class DashboardController extends Controller
         $slowQueries = array_slice($slowQueries, 0, 20);
 
         // Get the app database schema
-        $schema = [];
-        try {
-            $tables = DB::select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
-            foreach ($tables as $table) {
-                // Validate table name contains only safe identifier characters before embedding in PRAGMA
-                if (! preg_match('/^\w+$/', $table->name)) {
-                    continue;
-                }
-
-                $columns = DB::select("PRAGMA table_info(\"{$table->name}\")");
-                $indexes = DB::select("PRAGMA index_list(\"{$table->name}\")");
-                $fks = DB::select("PRAGMA foreign_key_list(\"{$table->name}\")");
-                $count = DB::selectOne("SELECT COUNT(*) as cnt FROM \"{$table->name}\"")?->cnt ?? 0;
-
-                // Get index details (columns per index)
-                $indexDetails = [];
-                foreach ($indexes as $idx) {
-                    if (! preg_match('/^\w+$/', $idx->name)) {
-                        continue;
-                    }
-
-                    $idxCols = DB::select("PRAGMA index_info(\"{$idx->name}\")");
-                    $indexDetails[] = [
-                        'name' => $idx->name,
-                        'unique' => (bool) $idx->unique,
-                        'columns' => collect($idxCols)->pluck('name')->all(),
-                    ];
-                }
-
-                $schema[] = [
-                    'name' => $table->name,
-                    'columns' => collect($columns)->map(fn ($c) => [
-                        'name' => $c->name,
-                        'type' => $c->type,
-                        'nullable' => ! $c->notnull,
-                        'pk' => (bool) $c->pk,
-                        'default' => $c->dflt_value,
-                    ])->all(),
-                    'indexes' => $indexDetails,
-                    'foreign_keys' => collect($fks)->map(fn ($fk) => [
-                        'from' => $fk->from,
-                        'table' => $fk->table,
-                        'to' => $fk->to,
-                        'on_update' => $fk->on_update,
-                        'on_delete' => $fk->on_delete,
-                    ])->all(),
-                    'index_count' => count($indexes),
-                    'fk_count' => count($fks),
-                    'row_count' => $count,
-                ];
-            }
-        } catch (Throwable) {
-            // Schema introspection may fail on non-SQLite DBs, that's fine
-        }
+        $schema = QueryAnalyzer::schema(withRowCounts: true);
 
         // Generate query optimization hints
         $hints = QueryAnalyzer::generateHints($allQueries, $schema);

@@ -138,7 +138,7 @@ final class ProfileRequest
         $profileId = Str::uuid()->toString();
         $this->storage->store($profileId, $profileData);
 
-        if (config('digdeep.show_debugbar', true) && ! $isAjax) {
+        if (config('digdeep.show_debugbar', true) && ! $isAjax && DigDeep::check($request)) {
             $response = $this->injectDebugbar($response, $profileData, $profileId);
         }
 
@@ -201,6 +201,16 @@ final class ProfileRequest
                     continue;
                 }
 
+                if (Str::contains(Str::lower((string) $key), self::SENSITIVE_KEYS)) {
+                    $data[(string) $key] = ['type' => gettype($value), 'value' => '[redacted]'];
+
+                    continue;
+                }
+
+                if (is_array($value)) {
+                    $value = $this->redact($value);
+                }
+
                 $data[(string) $key] = [
                     'type' => gettype($value),
                     'value' => is_scalar($value)
@@ -251,7 +261,7 @@ final class ProfileRequest
 
     private function sanitizeHeaders(array $headers): array
     {
-        $sensitive = ['authorization', 'cookie', 'set-cookie'];
+        $sensitive = ['authorization', 'proxy-authorization', 'cookie', 'set-cookie', 'x-xsrf-token', 'x-csrf-token', 'x-api-key', 'x-auth-token'];
 
         foreach ($sensitive as $key) {
             if (isset($headers[$key])) {

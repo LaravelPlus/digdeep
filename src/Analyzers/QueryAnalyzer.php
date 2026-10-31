@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace LaravelPlus\DigDeep\Analyzers;
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Throwable;
 
 final class QueryAnalyzer
 {
@@ -196,6 +199,61 @@ final class QueryAnalyzer
         }));
 
         return $results;
+    }
+
+    /**
+     * Read the default connection's schema in a driver-agnostic shape.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function schema(bool $withRowCounts = false): array
+    {
+        $schema = [];
+
+        try {
+            foreach (Schema::getTables() as $table) {
+                $name = $table['name'];
+                $indexes = Schema::getIndexes($name);
+                $fks = Schema::getForeignKeys($name);
+                $primary = collect($indexes)->firstWhere('primary', true)['columns'] ?? [];
+
+                $entry = [
+                    'name' => $name,
+                    'columns' => collect(Schema::getColumns($name))->map(fn (array $c): array => [
+                        'name' => $c['name'],
+                        'type' => $c['type'],
+                        'nullable' => $c['nullable'],
+                        'pk' => in_array($c['name'], $primary, true),
+                        'default' => $c['default'],
+                    ])->all(),
+                    'indexes' => collect($indexes)->map(fn (array $i): array => [
+                        'name' => $i['name'],
+                        'unique' => $i['unique'],
+                        'columns' => $i['columns'],
+                    ])->all(),
+                ];
+
+                if ($withRowCounts) {
+                    $entry['foreign_keys'] = collect($fks)->map(fn (array $fk): array => [
+                        'from' => implode(', ', $fk['columns']),
+                        'table' => $fk['foreign_table'],
+                        'to' => implode(', ', $fk['foreign_columns']),
+                        'on_update' => $fk['on_update'],
+                        'on_delete' => $fk['on_delete'],
+                    ])->all();
+                    $entry['index_count'] = count($indexes);
+                    $entry['fk_count'] = count($fks);
+                    // ponytail: exact COUNT(*) per table; switch to driver stats if huge tables make this slow
+                    $entry['row_count'] = DB::table($name)->count();
+                }
+
+                $schema[] = $entry;
+            }
+        } catch (Throwable) {
+            // Introspection is best-effort; hints still work without schema
+        }
+
+        return $schema;
     }
 
     /**

@@ -22,6 +22,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Code Actions
+    |--------------------------------------------------------------------------
+    |
+    | The "run artisan command" box and the AI "apply fix" button execute
+    | commands and rewrite files under app/. Leave unset to allow them only
+    | in the local environment; set DIGDEEP_CODE_ACTIONS=false to disable
+    | them everywhere. Never enable on a shared or public server.
+    |
+    */
+
+    'code_actions' => env('DIGDEEP_CODE_ACTIONS'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Auto Profile
     |--------------------------------------------------------------------------
     |
