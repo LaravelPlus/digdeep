@@ -32,6 +32,7 @@ it('counts route visits', function (): void {
 });
 
 it('prunes to max_profiles', function (): void {
+    config(['digdeep.prune_lottery' => [1, 1]]);
     $this->app->forgetInstance(DigDeepStorage::class);
     $this->app->singleton(DigDeepStorage::class, fn () => new DigDeepStorage(3));
 
@@ -94,4 +95,47 @@ it('truncates oversized profiles', function (): void {
     storeProfile('big', ['request' => ['body' => str_repeat('x', 50_000)]]);
 
     expect(strlen(json_encode(app(DigDeepStorage::class)->find('big')['data'])))->toBeLessThan(50_000);
+});
+
+it('empties the largest sections until the profile fits', function (): void {
+    config(['digdeep.max_profile_size_kb' => 4]);
+
+    storeProfile('huge', [
+        'queries' => array_fill(0, 50, ['sql' => 'select 1', 'bindings' => [str_repeat('b', 100)]]),
+        'logs' => array_fill(0, 200, ['message' => str_repeat('l', 100)]),
+    ]);
+
+    $data = app(DigDeepStorage::class)->find('huge')['data'];
+
+    expect(strlen(json_encode($data)))->toBeLessThanOrEqual(4 * 1024)
+        ->and($data['_dropped'])->toHaveKey('logs')->not->toHaveKey('queries')
+        ->and($data['queries'])->toHaveCount(50)
+        ->and($data['_truncated'])->toBeTrue();
+});
+
+it('leaves profiles under the limit untouched', function (): void {
+    storeProfile('small', ['logs' => [['message' => 'hi']]]);
+
+    expect(app(DigDeepStorage::class)->find('small')['data'])->not->toHaveKey('_truncated');
+});
+
+it('skips pruning when the lottery says no', function (): void {
+    config(['digdeep.prune_lottery' => [0, 1]]);
+    $this->app->forgetInstance(DigDeepStorage::class);
+    $this->app->singleton(DigDeepStorage::class, fn () => new DigDeepStorage(1));
+
+    storeProfile('a');
+    storeProfile('b');
+
+    expect(DigDeepProfile::query()->count())->toBe(2);
+});
+
+it('prunes a large backlog in chunks', function (): void {
+    foreach (range(1, 1200) as $i) {
+        DigDeepProfile::query()->create(['id' => "bulk-{$i}", 'method' => 'GET', 'url' => '/', 'data' => []]);
+    }
+
+    app(DigDeepStorage::class)->pruneKeeping(10);
+
+    expect(DigDeepProfile::query()->count())->toBe(10);
 });

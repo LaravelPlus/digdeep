@@ -233,7 +233,7 @@ final class DigDeepCollector
         // Run N+1 detection
         $nPlusOne = QueryAnalyzer::detectNPlusOne($queries);
 
-        return [
+        return self::cap([
             'request' => $this->requestData,
             'route' => $this->routeData,
             'response' => $this->responseData,
@@ -262,6 +262,36 @@ final class DigDeepCollector
                 'query_count' => count($queries),
                 'query_time_ms' => round($queryTimeMs, 2),
             ],
-        ];
+        ]);
+    }
+
+    private const array LIST_SECTIONS = ['queries', 'events', 'views', 'cache', 'mail', 'http_client', 'jobs', 'models', 'commands', 'scheduled_tasks', 'notifications', 'logs'];
+
+    /**
+     * Keep at most `limits.max_entries` per collector and shorten long strings.
+     * Totals (query_count, n_plus_one) are computed before this, from the full data.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private static function cap(array $data): array
+    {
+        $maxEntries = (int) config('digdeep.limits.max_entries', 500);
+        $maxLength = (int) config('digdeep.limits.max_string_length', 10_000);
+
+        foreach (self::LIST_SECTIONS as $section) {
+            if (count($data[$section]) > $maxEntries) {
+                $data['_dropped'][$section] = count($data[$section]) - $maxEntries;
+                $data[$section] = array_slice($data[$section], 0, $maxEntries);
+            }
+
+            array_walk_recursive($data[$section], function (mixed &$value) use ($maxLength): void {
+                if (is_string($value) && strlen($value) > $maxLength) {
+                    $value = mb_strcut($value, 0, $maxLength).'... [truncated]';
+                }
+            });
+        }
+
+        return $data;
     }
 }

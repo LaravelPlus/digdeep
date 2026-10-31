@@ -126,3 +126,21 @@ it('registers listeners once and resets state between requests in long-lived wor
         ->and($data['exception'])->toBeNull()
         ->and(Event::getListeners(QueryExecuted::class))->toHaveCount($listeners);
 });
+
+it('caps entries per collector and shortens long strings, but counts everything', function (): void {
+    config(['digdeep.limits.max_entries' => 3, 'digdeep.limits.max_string_length' => 20]);
+
+    $data = $this->profile('/many', function () {
+        foreach (range(1, 5) as $i) {
+            DB::select('select '.$i);
+        }
+        Log::info(str_repeat('x', 100));
+
+        return 'ok';
+    })->data;
+
+    expect($data['queries'])->toHaveCount(3)
+        ->and($data['performance']['query_count'])->toBe(5)
+        ->and($data['_dropped']['queries'])->toBe(2)
+        ->and($data['logs'][0]['message'])->toBe(str_repeat('x', 20).'... [truncated]');
+});
