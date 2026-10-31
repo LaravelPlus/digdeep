@@ -49,7 +49,7 @@ final class ProfileUrl extends Tool
             );
 
             $routeData = [];
-            $matchedRoute = app('router')->getRoutes()->match($httpRequest);
+            $matchedRoute = app('request')->route();
             if ($matchedRoute) {
                 $routeData = [
                     'name' => $matchedRoute->getName(),

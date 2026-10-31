@@ -86,7 +86,7 @@ final class ApiController extends Controller
             ]);
         }
 
-        $route = $subRequest->route();
+        $route = app('request')->route();
 
         if ($route) {
             $this->collector->setRoute([
@@ -211,7 +211,7 @@ final class ApiController extends Controller
             ]);
         }
 
-        $route = $subRequest->route();
+        $route = app('request')->route();
         if ($route) {
             $this->collector->setRoute([
                 'name' => $route->getName(),
