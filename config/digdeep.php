@@ -70,13 +70,24 @@ return [
     | Max Profile Size (KB)
     |--------------------------------------------------------------------------
     |
-    | Maximum JSON payload size for a single profile. Profiles exceeding
-    | this limit have their request/response bodies and query bindings
-    | truncated to stay within bounds.
+    | Maximum JSON payload size for a single profile. Oversized profiles get
+    | their bodies shortened and query bindings dropped, then the largest
+    | sections are emptied until the profile fits. `_truncated` and
+    | `_dropped` in the stored data say what was removed.
     |
     */
 
     'max_profile_size_kb' => env('DIGDEEP_MAX_PROFILE_SIZE', 512),
+
+    // Per-collector entry cap and max string length (SQL, log context, payload summaries).
+    // Totals such as query_count are still counted from the full data.
+    'limits' => [
+        'max_entries' => env('DIGDEEP_MAX_ENTRIES', 500),
+        'max_string_length' => env('DIGDEEP_MAX_STRING_LENGTH', 10000),
+    ],
+
+    // Prune to max_profiles on [chance, out of] writes. Or schedule `digdeep:prune` and set [0, 1].
+    'prune_lottery' => [1, 10],
 
     /*
     |--------------------------------------------------------------------------

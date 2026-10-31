@@ -58,7 +58,10 @@ final class DigDeepStorage
             ]);
         }
 
-        $this->prune();
+        [$chance, $outOf] = config('digdeep.prune_lottery', [1, 10]);
+        if (random_int(1, (int) $outOf) <= (int) $chance) {
+            $this->prune();
+        }
     }
 
     /**
@@ -265,12 +268,13 @@ final class DigDeepStorage
             return;
         }
 
-        $idsToDelete = DigDeepProfile::query()
+        // Chunked so a large backlog stays under the driver's bound-parameter limit (SQLite: 999 on old builds).
+        DigDeepProfile::query()
             ->oldest()
             ->limit($count - $keep)
-            ->pluck('id');
-
-        DigDeepProfile::query()->whereIn('id', $idsToDelete)->delete();
+            ->pluck('id')
+            ->chunk(500)
+            ->each(fn ($ids) => DigDeepProfile::query()->whereIn('id', $ids)->delete());
     }
 
     public function delete(string $id): void
@@ -348,39 +352,50 @@ final class DigDeepStorage
     }
 
     /**
-     * Truncate large profile data to stay within configured size limits.
+     * Shrink a profile until its JSON fits in `max_profile_size_kb`: shorten bodies,
+     * drop bindings, then empty the largest sections one by one.
      */
     private function enforceMaxSize(array $data): array
     {
-        $maxKb = config('digdeep.max_profile_size_kb', 512);
-        $maxBytes = $maxKb * 1024;
+        $maxBytes = (int) config('digdeep.max_profile_size_kb', 512) * 1024;
+        $fits = fn (array $data): bool => strlen((string) json_encode($data, JSON_PARTIAL_OUTPUT_ON_ERROR)) <= $maxBytes;
 
-        $encoded = json_encode($data);
-        if ($encoded === false || mb_strlen($encoded) <= $maxBytes) {
+        if ($fits($data)) {
             return $data;
         }
 
-        // Truncate response body first (usually the largest)
-        if (isset($data['response']['body']) && mb_strlen($data['response']['body']) > 1024) {
-            $data['response']['body'] = mb_substr($data['response']['body'], 0, 1024).'... [truncated]';
-        }
-
-        // Truncate request body
-        if (isset($data['request']['body']) && mb_strlen($data['request']['body']) > 1024) {
-            $data['request']['body'] = mb_substr($data['request']['body'], 0, 1024).'... [truncated]';
-        }
-
-        // Strip query bindings if still too large
-        $encoded = json_encode($data);
-        if ($encoded !== false && mb_strlen($encoded) > $maxBytes) {
-            foreach ($data['queries'] ?? [] as &$q) {
-                $q['bindings'] = [];
-            }
-            unset($q);
-        }
-
-        // Mark as truncated
         $data['_truncated'] = true;
+
+        foreach (['request', 'response'] as $part) {
+            if (isset($data[$part]['body']) && strlen($data[$part]['body']) > 1024) {
+                $data[$part]['body'] = mb_strcut($data[$part]['body'], 0, 1024).'... [truncated]';
+            }
+        }
+
+        if ($fits($data)) {
+            return $data;
+        }
+
+        foreach ($data['queries'] ?? [] as $i => $query) {
+            $data['queries'][$i]['bindings'] = [];
+        }
+
+        $sizes = [];
+        foreach ($data as $key => $value) {
+            if (is_array($value) && ! in_array($key, ['request', 'response', 'route', 'performance'], true)) {
+                $sizes[$key] = strlen((string) json_encode($value, JSON_PARTIAL_OUTPUT_ON_ERROR));
+            }
+        }
+        arsort($sizes);
+
+        foreach (array_keys($sizes) as $key) {
+            if ($fits($data)) {
+                break;
+            }
+
+            $data['_dropped'][$key] = 'size';
+            $data[$key] = [];
+        }
 
         return $data;
     }

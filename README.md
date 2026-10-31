@@ -196,7 +196,7 @@ DigDeep is a development tool. It records SQL, request data and session contents
 
 ## Storage
 
-Profiles are stored in the `digdeep_profiles` and `digdeep_route_visits` tables on your default connection. Only the latest `max_profiles` are kept. Use `php artisan digdeep:prune` or `digdeep:clear` to clean up manually.
+Profiles are stored in the `digdeep_profiles` and `digdeep_route_visits` tables on your default connection. Only the latest `max_profiles` are kept. Use `php artisan digdeep:prune` or `digdeep:clear` to clean up manually. Pruning to `max_profiles` runs on 1 in 10 writes (`prune_lottery`); to prune only from the scheduler, set it to `[0, 1]` and schedule `digdeep:prune`. Each collector keeps at most 500 entries (`limits.max_entries`); totals such as query count still include everything.
 
 ## Testing
 
