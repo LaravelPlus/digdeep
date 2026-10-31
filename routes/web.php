@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use LaravelPlus\DigDeep\Controllers\ApiController;
-use LaravelPlus\DigDeep\Controllers\DashboardController;
-use LaravelPlus\DigDeep\Middleware\Authorize;
+use LaravelPlus\DigDeep\Http\Controllers\ApiController;
+use LaravelPlus\DigDeep\Http\Controllers\DashboardController;
+use LaravelPlus\DigDeep\Http\Middleware\Authorize;
 
 Route::prefix('digdeep')->middleware(['web', Authorize::class])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('digdeep.dashboard');

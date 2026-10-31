@@ -7,11 +7,11 @@ namespace LaravelPlus\DigDeep;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Mcp\Facades\Mcp;
-use LaravelPlus\DigDeep\Commands\ClearCommand;
-use LaravelPlus\DigDeep\Commands\PruneCommand;
-use LaravelPlus\DigDeep\Commands\StatusCommand;
+use LaravelPlus\DigDeep\Console\Commands\ClearCommand;
+use LaravelPlus\DigDeep\Console\Commands\PruneCommand;
+use LaravelPlus\DigDeep\Console\Commands\StatusCommand;
+use LaravelPlus\DigDeep\Http\Middleware\ProfileRequest;
 use LaravelPlus\DigDeep\Mcp\Servers\DigDeepServer;
-use LaravelPlus\DigDeep\Middleware\ProfileRequest;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
 
 final class DigDeepServiceProvider extends ServiceProvider
@@ -48,6 +48,11 @@ final class DigDeepServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../resources/views' => resource_path('views/vendor/digdeep'),
         ], 'digdeep-views');
+
+        // ponytail: same filenames on purpose; the migrator keys by name, so published copies replace the package ones
+        $this->publishes([
+            __DIR__.'/../database/migrations' => database_path('migrations'),
+        ], 'digdeep-migrations');
 
         if ($this->app->runningInConsole()) {
             $this->commands([

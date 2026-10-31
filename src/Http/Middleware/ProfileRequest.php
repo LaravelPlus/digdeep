@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace LaravelPlus\DigDeep\Middleware;
+namespace LaravelPlus\DigDeep\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
@@ -113,7 +113,7 @@ final class ProfileRequest
         );
 
         // Capture exception if response indicates an error
-        if ($response->getStatusCode() >= 400 && $response->exception ?? null) {
+        if ($response->getStatusCode() >= 400 && isset($response->exception)) {
             $this->collector->setException($response->exception);
         }
 
@@ -171,7 +171,7 @@ final class ProfileRequest
             $original = $response->original ?? null;
             $response->setContent(str_replace('</body>', $debugbarHtml.'</body>', $content));
             if ($original !== null) {
-                $response->original = $original; // @phpstan-ignore-line
+                $response->original = $original;
             }
         } catch (Throwable) {
             // Never break the response if debugbar fails to render
