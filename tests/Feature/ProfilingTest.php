@@ -144,3 +144,27 @@ it('caps entries per collector and shortens long strings, but counts everything'
         ->and($data['_dropped']['queries'])->toBe(2)
         ->and($data['logs'][0]['message'])->toBe(str_repeat('x', 20).'... [truncated]');
 });
+
+it('does not store streamed or binary responses', function (): void {
+    $file = tempnam(sys_get_temp_dir(), 'dd');
+    file_put_contents($file, 'data');
+    Route::get('/stream', fn () => response()->stream(fn () => print 'x'));
+    Route::get('/download', fn () => response()->download($file));
+
+    $this->get('/stream')->assertOk();
+    $this->get('/download')->assertOk();
+
+    expect(DigDeepProfile::query()->whereIn('url', ['/stream', '/download'])->count())->toBe(0);
+});
+
+it('profiles nothing at sample_rate 0 and everything at 1', function (): void {
+    Route::get('/sampled', fn () => 'ok');
+
+    config(['digdeep.sample_rate' => 0.0]);
+    $this->get('/sampled');
+    expect(DigDeepProfile::query()->where('url', '/sampled')->count())->toBe(0);
+
+    config(['digdeep.sample_rate' => 1.0]);
+    $this->get('/sampled');
+    expect(DigDeepProfile::query()->where('url', '/sampled')->count())->toBe(1);
+});

@@ -44,6 +44,7 @@ php artisan vendor:publish --tag=digdeep-config
 | `enabled` | unset | Unset = on only in `local`/`testing`. `DIGDEEP_ENABLED=true/false` forces it. |
 | `show_debugbar` | `true` | Inject the floating toolbar into HTML pages (authorized viewers only) |
 | `code_actions` | unset | Artisan command box + AI "apply fix". Unset = `local` only (`DIGDEEP_CODE_ACTIONS`) |
+| `sample_rate` | `1.0` | Share of requests to profile (`DIGDEEP_SAMPLE_RATE`). Streamed and binary responses are never stored. |
 | `auto_profile` | `true` | Profile every web request |
 | `max_profiles` | `200` | Stored profiles kept (oldest pruned) |
 | `max_profile_size_kb` | `512` | Per-profile payload cap |
