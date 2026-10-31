@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace LaravelPlus\DigDeep\Collectors;
 
 use Illuminate\Support\Facades\DB;
+use LaravelPlus\DigDeep\Support\Redactor;
 
 final class QueryCollector
 {
@@ -23,7 +24,7 @@ final class QueryCollector
 
             $this->queries[] = [
                 'sql' => $query->sql,
-                'bindings' => $query->bindings,
+                'bindings' => Redactor::bindings($query->sql, $query->bindings),
                 'time_ms' => $query->time,
                 'start_offset_ms' => round($startOffsetMs, 2),
                 'caller' => $caller,

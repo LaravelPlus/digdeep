@@ -80,6 +80,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Redaction
+    |--------------------------------------------------------------------------
+    |
+    | Applied before anything is stored: request/response bodies, session,
+    | log context, outgoing HTTP client calls and SQL bindings. A key is
+    | masked when its name contains any entry in 'keys' (case-insensitive).
+    | Bindings are masked when bound to such a column (`password = ?`,
+    | insert column lists) or when the value matches a 'binding_patterns'
+    | regex (bcrypt/argon2 hashes by default).
+    |
+    */
+
+    'redact' => [
+        'keys' => ['password', 'passwd', 'token', 'secret', 'card', 'cvv', 'cvc', 'api_key', 'apikey', 'authorization', 'private_key'],
+        'headers' => ['authorization', 'proxy-authorization', 'cookie', 'set-cookie', 'x-xsrf-token', 'x-csrf-token', 'x-api-key', 'x-auth-token'],
+        'bindings' => env('DIGDEEP_REDACT_BINDINGS', true),
+        'binding_patterns' => ['/^\$2[aby]\$\d\d\$/', '/^\$argon2/'],
+    ],
+
+    // Set to false to stop storing response bodies (JSON bodies are key-redacted either way).
+    'capture_response_bodies' => env('DIGDEEP_CAPTURE_RESPONSE_BODIES', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | AI Integration
     |--------------------------------------------------------------------------
     |

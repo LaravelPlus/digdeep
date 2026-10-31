@@ -192,7 +192,7 @@ DigDeep is a development tool. It records SQL, request data and session contents
   The same gate decides who sees the debugbar.
 - **Code actions** (artisan runner, AI "apply fix") run only in `local` unless `DIGDEEP_CODE_ACTIONS=true`. Never enable them on a shared or public server.
 - **CSRF:** dashboard routes use the `web` middleware group, so every POST/DELETE needs the session CSRF token.
-- **Redaction:** keys containing `password`, `token`, `secret`, `card`, `cvv`, `cvc`, `api_key` or `authorization` are masked in payloads, JSON/form bodies and session values. The `authorization`, `proxy-authorization`, `cookie`, `set-cookie`, `x-xsrf-token`, `x-csrf-token`, `x-api-key` and `x-auth-token` headers are masked too. Text/XML bodies are not stored. SQL bindings are stored as-is, so don't profile against production data.
+- **Redaction** (`redact` in the config): keys containing any `redact.keys` entry (`password`, `token`, `secret`, `api_key`, …) are masked in payloads, JSON/form bodies (request, response, outgoing HTTP client calls), session values and log context. `redact.headers` (auth, cookie and CSRF headers) are masked too. Text/XML request bodies are not stored. SQL bindings are masked when bound to a sensitive column (`password = ?`, insert column lists) or when they look like a password hash (`redact.binding_patterns`); other bindings are stored, so don't profile against production data. Set `DIGDEEP_CAPTURE_RESPONSE_BODIES=false` to stop storing response bodies.
 
 ## Storage
 

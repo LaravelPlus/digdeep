@@ -10,6 +10,7 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 - The debugbar is shown only to viewers who pass the `DigDeep::auth()` gate.
 - XSS fixes in HTML exports and debugbar. CDN scripts pinned with SRI.
 - Wider redaction (payload, bodies, session, auth headers).
+- One config-driven redactor (`redact.keys`, `redact.headers`) now also covers SQL bindings, log context, response bodies and HTTP client bodies. `DIGDEEP_CAPTURE_RESPONSE_BODIES=false` turns response body capture off.
 
 ### Fixed
 - AI endpoints return 501 instead of crashing when `laravel/ai` is missing.

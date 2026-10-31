@@ -6,14 +6,12 @@ namespace LaravelPlus\DigDeep\Collectors;
 
 use Illuminate\Http\Client\Events\ResponseReceived;
 use Illuminate\Support\Facades\Event;
+use LaravelPlus\DigDeep\Support\Redactor;
 
 final class HttpClientCollector
 {
     /** @var array<int, array{method: string, url: string, status: int, duration_ms: float, request_headers?: array, request_body?: string, response_headers?: array, response_body?: string, response_size?: int}> */
     private array $requests = [];
-
-    /** @var array<int, string> */
-    private const array SENSITIVE_HEADERS = ['authorization', 'cookie', 'set-cookie', 'x-api-key', 'x-auth-token'];
 
     public function listen(): void
     {
@@ -27,8 +25,8 @@ final class HttpClientCollector
             $responseSize = mb_strlen($responseBody);
 
             // Truncate bodies to prevent storage bloat
-            $requestBody = mb_substr((string) $request->body(), 0, 4096);
-            $responseBody = mb_substr($responseBody, 0, 8192);
+            $requestBody = mb_substr(Redactor::body((string) $request->body(), $request->header('Content-Type')[0] ?? ''), 0, 4096);
+            $responseBody = mb_substr(Redactor::body($responseBody, $response->header('Content-Type')), 0, 8192);
 
             $this->requests[] = [
                 'method' => $request->method(),
@@ -52,18 +50,9 @@ final class HttpClientCollector
 
     private function sanitizeHeaders(array $headers): array
     {
-        $sanitized = [];
-
-        foreach ($headers as $key => $value) {
-            $lowerKey = mb_strtolower($key);
-
-            if (in_array($lowerKey, self::SENSITIVE_HEADERS)) {
-                $sanitized[$key] = '[redacted]';
-            } else {
-                $sanitized[$key] = is_array($value) ? implode(', ', $value) : $value;
-            }
-        }
-
-        return $sanitized;
+        return array_map(
+            fn ($value) => is_array($value) ? implode(', ', $value) : $value,
+            Redactor::headers($headers),
+        );
     }
 }
