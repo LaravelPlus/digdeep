@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 return [
 
-    'enabled' => env('DIGDEEP_ENABLED', true),
+    // null (unset) = enabled only in local/testing environments. Set DIGDEEP_ENABLED=true to force on.
+    'enabled' => env('DIGDEEP_ENABLED'),
 
     /*
     |--------------------------------------------------------------------------
