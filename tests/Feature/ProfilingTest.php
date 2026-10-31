@@ -355,3 +355,13 @@ it('names the calling file for queries issued outside vendor and package code', 
 
     expect($data['queries'][0]['caller'])->toBe('DigDeepCaller.php:3');
 });
+
+it('reports the app file that ran a query as its caller', function (): void {
+    $data = $this->profile('/caller', function () {
+        DB::select('select 1');
+
+        return 'ok';
+    })->data;
+
+    expect($data['queries'][0]['caller'])->toStartWith('ProfilingTest.php:');
+});

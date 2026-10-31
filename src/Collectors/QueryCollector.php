@@ -47,7 +47,7 @@ final class QueryCollector
 
             return ! empty($file)
                 && ! str_contains($file, '/vendor/')
-                && ! str_contains($file, '/digdeep/');
+                && ! str_starts_with($file, dirname(__DIR__).DIRECTORY_SEPARATOR);
         });
 
         return $frame !== null
