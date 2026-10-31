@@ -53,7 +53,7 @@ it('tags and fires an event when thresholds are exceeded', function (): void {
     Event::assertDispatched(ThresholdExceeded::class);
 });
 
-it('filters by status, method, route and tag', function (): void {
+it('filters by status, duration, date, method, route and tag', function (): void {
     storeProfile('ok');
     storeProfile('err', ['request' => ['method' => 'POST', 'url' => '/orders'], 'response' => ['status_code' => 500]]);
     app(DigDeepStorage::class)->updateTags('err', 'checkout');
@@ -64,7 +64,12 @@ it('filters by status, method, route and tag', function (): void {
     expect($ids(['status_min' => 500]))->toBe(['err'])
         ->and($ids(['method' => 'post']))->toBe(['err'])
         ->and($ids(['route' => 'orders']))->toBe(['err'])
-        ->and($ids(['tag' => 'checkout']))->toBe(['err']);
+        ->and($ids(['tag' => 'checkout']))->toBe(['err'])
+        ->and($ids(['status_max' => 200]))->toBe(['ok'])
+        ->and($ids(['duration_min' => 20]))->toBe([])
+        ->and($ids(['duration_max' => 20]))->toHaveCount(2)
+        ->and($ids(['date_from' => '2999-01-01']))->toBe([])
+        ->and($ids(['date_to' => '2000-01-01']))->toBe([]);
 });
 
 it('bulk tags, bulk deletes and clears', function (): void {
@@ -95,6 +100,29 @@ it('truncates oversized profiles', function (): void {
     storeProfile('big', ['request' => ['body' => str_repeat('x', 50_000)]]);
 
     expect(strlen(json_encode(app(DigDeepStorage::class)->find('big')['data'])))->toBeLessThan(50_000);
+});
+
+it('shortens oversized bodies without dropping anything else', function (): void {
+    config(['digdeep.max_profile_size_kb' => 2]);
+
+    storeProfile('chatty', ['response' => ['body' => str_repeat('x', 5_000)]]);
+
+    $data = app(DigDeepStorage::class)->find('chatty')['data'];
+
+    expect($data['response']['body'])->toEndWith('... [truncated]')
+        ->and($data)->not->toHaveKey('_dropped');
+});
+
+it('skips disabled thresholds', function (): void {
+    config(['digdeep.thresholds' => ['duration_ms' => null, 'query_count' => 0]]);
+
+    storeProfile('p', ['performance' => ['duration_ms' => 99999, 'query_count' => 999]]);
+
+    expect(app(DigDeepStorage::class)->find('p')['tags'])->toBeEmpty();
+});
+
+it('reports zeroed stats when empty', function (): void {
+    expect(app(DigDeepStorage::class)->stats())->toMatchArray(['total' => 0, 'avg_duration' => 0]);
 });
 
 it('empties the largest sections until the profile fits', function (): void {

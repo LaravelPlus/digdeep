@@ -12,7 +12,7 @@ final class QueryCollector
     /** @var array<int, array{sql: string, bindings: array<mixed>, time_ms: float, start_offset_ms: float, caller: string}> */
     private array $queries = [];
 
-    public function __construct(private float $requestStartTime = 0.0) {}
+    public function __construct(private float $requestStartTime) {}
 
     public function listen(): void
     {
@@ -20,9 +20,7 @@ final class QueryCollector
             $caller = $this->findCaller();
 
             // DB::listen fires after the query completes; subtract duration to get start offset
-            $startOffsetMs = $this->requestStartTime > 0
-                ? max(0.0, (microtime(true) - $this->requestStartTime) * 1000 - $query->time)
-                : 0.0;
+            $startOffsetMs = max(0.0, (microtime(true) - $this->requestStartTime) * 1000 - $query->time);
 
             $this->queries[] = [
                 'sql' => $query->sql,
@@ -49,7 +47,7 @@ final class QueryCollector
 
             return ! empty($file)
                 && ! str_contains($file, '/vendor/')
-                && ! str_contains($file, '/digdeep/');
+                && ! str_starts_with($file, dirname(__DIR__).DIRECTORY_SEPARATOR);
         });
 
         return $frame !== null

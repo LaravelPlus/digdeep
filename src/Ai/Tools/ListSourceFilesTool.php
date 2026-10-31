@@ -8,7 +8,6 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use Override;
-use Stringable;
 
 final class ListSourceFilesTool implements Tool
 {
@@ -18,7 +17,7 @@ final class ListSourceFilesTool implements Tool
      * Get the description of the tool's purpose.
      */
     #[Override]
-    public function description(): Stringable|string
+    public function description(): string
     {
         return 'List PHP files in a directory to locate the right model, controller, or service file. Useful when you are unsure of the exact filename.';
     }
@@ -27,7 +26,7 @@ final class ListSourceFilesTool implements Tool
      * Execute the tool.
      */
     #[Override]
-    public function handle(Request $request): Stringable|string
+    public function handle(Request $request): string
     {
         $dir = $this->sanitizePath($request['directory']);
 

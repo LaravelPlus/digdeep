@@ -6,6 +6,7 @@ namespace LaravelPlus\DigDeep\Tests;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Laravel\Ai\AiServiceProvider;
 use Laravel\Mcp\Server\McpServiceProvider;
 use LaravelPlus\DigDeep\DigDeep;
 use LaravelPlus\DigDeep\DigDeepServiceProvider;
@@ -24,6 +25,13 @@ abstract class TestCase extends Orchestra
         parent::setUp();
 
         DigDeep::auth(fn (): bool => false);
+    }
+
+    protected function tearDown(): void
+    {
+        DigDeep::$aiSdkAvailable = null;
+
+        parent::tearDown();
     }
 
     /** Laravel 12 calls it ValidateCsrfToken, 13 renamed it PreventRequestForgery. */
@@ -48,7 +56,7 @@ abstract class TestCase extends Orchestra
 
     protected function getPackageProviders($app): array
     {
-        return [McpServiceProvider::class, DigDeepServiceProvider::class];
+        return [AiServiceProvider::class, McpServiceProvider::class, DigDeepServiceProvider::class];
     }
 
     protected function defineEnvironment($app): void

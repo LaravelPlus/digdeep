@@ -295,19 +295,6 @@ final class DigDeepStorage
             COALESCE(MAX(query_count), 0) as most_queries
         ')->first();
 
-        if (! $result) {
-            return [
-                'total' => 0,
-                'avg_duration' => 0,
-                'min_duration' => 0,
-                'max_duration' => 0,
-                'avg_queries' => 0,
-                'avg_memory' => 0,
-                'slowest_duration' => 0,
-                'most_queries' => 0,
-            ];
-        }
-
         return $result->toArray();
     }
 

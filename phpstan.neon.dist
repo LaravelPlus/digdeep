@@ -9,6 +9,3 @@ parameters:
     paths:
         - src
         - routes
-    excludePaths:
-        # laravel/ai is optional and not installed in dev; these classes only load when it is
-        - src/Ai

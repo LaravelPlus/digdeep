@@ -8,7 +8,6 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use Override;
-use Stringable;
 
 final class WriteSourceFileTool implements Tool
 {
@@ -18,7 +17,7 @@ final class WriteSourceFileTool implements Tool
      * Get the description of the tool's purpose.
      */
     #[Override]
-    public function description(): Stringable|string
+    public function description(): string
     {
         return 'Apply a targeted fix to a PHP source file by replacing an exact code snippet. The old_code must match exactly what is in the file.';
     }
@@ -27,7 +26,7 @@ final class WriteSourceFileTool implements Tool
      * Execute the tool.
      */
     #[Override]
-    public function handle(Request $request): Stringable|string
+    public function handle(Request $request): string
     {
         $path = $this->sanitizePath($request['path']);
 

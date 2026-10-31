@@ -624,10 +624,6 @@ final class DashboardController extends Controller
 
     private function percentile(array $sorted, float $p): float
     {
-        if (empty($sorted)) {
-            return 0.0;
-        }
-
         $idx = (int) ceil(count($sorted) * $p) - 1;
 
         return round($sorted[max(0, $idx)], 1);
@@ -674,22 +670,8 @@ final class DashboardController extends Controller
      */
     private function parseLogFile(string $path, int $maxEntries): array
     {
-        // Read file in chunks from the end to avoid memory issues with large files
-        $handle = fopen($path, 'rb');
-        if (! $handle) {
-            return [];
-        }
-
-        fseek($handle, 0, SEEK_END);
-        $fileSize = ftell($handle);
-        $chunkSize = min($fileSize, 2 * 1024 * 1024); // Read max 2MB from end
-        fseek($handle, max(0, $fileSize - $chunkSize));
-        $content = fread($handle, $chunkSize);
-        fclose($handle);
-
-        if (! $content) {
-            return [];
-        }
+        // Read at most the last 2MB to avoid memory issues with large files
+        $content = (string) file_get_contents($path, false, null, max(0, filesize($path) - 2 * 1024 * 1024));
 
         $entryPattern = '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (?:\w+)\.(\w+): (.+)/m';
         preg_match_all($entryPattern, $content, $matches, PREG_OFFSET_CAPTURE);

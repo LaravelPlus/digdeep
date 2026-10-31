@@ -5,7 +5,9 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use LaravelPlus\DigDeep\DigDeep;
+use LaravelPlus\DigDeep\DigDeepServiceProvider;
 use LaravelPlus\DigDeep\Models\DigDeepProfile;
+use LaravelPlus\DigDeep\Storage\DigDeepStorage;
 
 function asProduction(): void
 {
@@ -53,6 +55,7 @@ it('requires a CSRF token on state-changing API calls', function (): void {
 });
 
 it('reports 501 instead of crashing when AI is used without laravel/ai', function (): void {
+    DigDeep::$aiSdkAvailable = false;
     config(['digdeep.code_actions' => true]);
 
     $this->postJson('/digdeep/api/ai-apply', ['file_path' => 'app/X.php', 'old_code' => 'a', 'new_code' => 'b'])
@@ -99,10 +102,30 @@ it('escapes profile data in the html export', function (): void {
 });
 
 it('falls back to the default model when DIGDEEP_AI_MODEL is unset', function (): void {
+    DigDeep::$aiSdkAvailable = false;
     config(['digdeep.ai_key' => 'test-key', 'digdeep.ai_provider' => 'anthropic', 'digdeep.ai_model' => null]);
     Http::fake(['api.anthropic.com/*' => Http::response(['content' => [['text' => 'PROBLEM: x']]])]);
 
     $this->postJson('/digdeep/api/ai-suggest', ['sql' => 'select * from users', 'issue' => 'select_star'])->assertOk();
 
     Http::assertSent(fn ($request): bool => $request['model'] === 'claude-haiku-4-5-20251001');
+});
+
+it('denies everyone outside local when no auth callback is registered', function (): void {
+    (new ReflectionProperty(DigDeep::class, 'authUsing'))->setValue(null, null);
+    asProduction();
+
+    $this->get('/digdeep')->assertNotFound();
+});
+
+it('registers nothing when disabled', function (): void {
+    $this->app['config']->set('digdeep.enabled', false);
+    $provider = new DigDeepServiceProvider($this->app);
+    $this->app->forgetInstance(DigDeepStorage::class);
+    unset($this->app[DigDeepStorage::class]);
+
+    $provider->register();
+    $provider->boot();
+
+    expect($this->app->bound(DigDeepStorage::class))->toBeFalse();
 });

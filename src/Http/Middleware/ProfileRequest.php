@@ -105,7 +105,7 @@ final class ProfileRequest
 
             foreach ($middlewareList as $mw) {
                 $name = is_string($mw) ? $mw : get_class($mw);
-                $perMiddleware = count($middlewareList) > 0 ? $middlewareDuration / count($middlewareList) : 0;
+                $perMiddleware = $middlewareDuration / count($middlewareList);
                 $middlewareCollector->recordMiddleware($name, $perMiddleware, true);
             }
         }
@@ -200,42 +200,32 @@ final class ProfileRequest
             return [];
         }
 
-        try {
-            $session = $request->session();
+        $data = [];
 
-            if (! $session->isStarted()) {
-                return [];
+        foreach ($request->session()->all() as $key => $value) {
+            if (str_starts_with((string) $key, '_')) {
+                continue;
             }
 
-            $data = [];
+            if (Redactor::isSensitiveKey((string) $key)) {
+                $data[(string) $key] = ['type' => gettype($value), 'value' => '[redacted]'];
 
-            foreach ($session->all() as $key => $value) {
-                if (str_starts_with((string) $key, '_')) {
-                    continue;
-                }
-
-                if (Redactor::isSensitiveKey((string) $key)) {
-                    $data[(string) $key] = ['type' => gettype($value), 'value' => '[redacted]'];
-
-                    continue;
-                }
-
-                if (is_array($value)) {
-                    $value = Redactor::keys($value);
-                }
-
-                $data[(string) $key] = [
-                    'type' => gettype($value),
-                    'value' => is_scalar($value)
-                        ? (string) $value
-                        : mb_substr((string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 0, 200),
-                ];
+                continue;
             }
 
-            return $data;
-        } catch (Throwable) {
-            return [];
+            if (is_array($value)) {
+                $value = Redactor::keys($value);
+            }
+
+            $data[(string) $key] = [
+                'type' => gettype($value),
+                'value' => is_scalar($value)
+                    ? (string) $value
+                    : mb_substr((string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 0, 200),
+            ];
         }
+
+        return $data;
     }
 
     private function redactBody(Request $request, string $contentType): string

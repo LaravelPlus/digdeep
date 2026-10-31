@@ -19,11 +19,11 @@ final class CommandCollector
     public function listen(): void
     {
         Event::listen(CommandStarting::class, function (CommandStarting $event): void {
-            $this->pending[$event->command ?? 'unknown'] = microtime(true);
+            $this->pending[$event->command] = microtime(true);
         });
 
         Event::listen(CommandFinished::class, function (CommandFinished $event): void {
-            $command = $event->command ?? 'unknown';
+            $command = $event->command;
             $startTime = $this->pending[$command] ?? null;
             $durationMs = $startTime !== null ? (microtime(true) - $startTime) * 1000 : 0;
 

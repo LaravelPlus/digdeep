@@ -13,6 +13,9 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 - One config-driven redactor (`redact.keys`, `redact.headers`) now also covers SQL bindings, log context, response bodies and HTTP client bodies. `DIGDEEP_CAPTURE_RESPONSE_BODIES=false` turns response body capture off.
 
 ### Fixed
+- On-demand profiles (trigger, replay, MCP `profile-url`) record the matched route; unknown URLs are stored as 404, not 500.
+- The logs page no longer errors on an empty log file; `ai-investigate` handles trace frames without a function.
+- Query callers are detected when the app's own path contains `digdeep`.
 - Streamed and binary responses (downloads, SSE) are no longer profiled. New `sample_rate` option (`DIGDEEP_SAMPLE_RATE`) profiles only a share of requests.
 - `max_profile_size_kb` is enforced: oversized profiles drop their largest sections until they fit. Collectors keep at most `limits.max_entries` entries and shorten long strings. Pruning runs on a lottery (`prune_lottery`) and deletes in chunks.
 - Listeners are registered once per worker, so Octane/FrankenPHP no longer pile up listeners or leak data between requests.
@@ -22,6 +25,7 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 - Profiling no longer errors on non-Laravel responses with status >= 400.
 
 ### Changed
+- Test suite covers 100% of `src/`, enforced in CI. `laravel/ai` is a dev dependency so the AI features are tested.
 - Classes moved to `Http\Controllers`, `Http\Middleware` and `Console\Commands`.
 - Migrations publishable via the `digdeep-migrations` tag.
 

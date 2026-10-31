@@ -86,7 +86,7 @@ final class ApiController extends Controller
             ]);
         }
 
-        $route = $subRequest->route();
+        $route = app('request')->route();
 
         if ($route) {
             $this->collector->setRoute([
@@ -211,7 +211,7 @@ final class ApiController extends Controller
             ]);
         }
 
-        $route = $subRequest->route();
+        $route = app('request')->route();
         if ($route) {
             $this->collector->setRoute([
                 'name' => $route->getName(),
@@ -404,7 +404,7 @@ PROMPT;
         $file = $request->input('file', '');
         $line = $request->input('line', '');
         $trace = collect($request->input('trace', []))
-            ->map(fn (array $f): string => ($f['file'] ?? '').':'.($f['line'] ?? '').' → '.($f['class'] ?? '').($f['function'] ? '::'.$f['function'].'()' : ''))
+            ->map(fn (array $f): string => ($f['file'] ?? '').':'.($f['line'] ?? '').' → '.($f['class'] ?? '').(isset($f['function']) ? '::'.$f['function'].'()' : ''))
             ->implode("\n");
 
         $prompt = <<<PROMPT
@@ -1076,10 +1076,6 @@ PROMPT;
 
     private function percentile(array $sorted, float $p): float
     {
-        if (empty($sorted)) {
-            return 0.0;
-        }
-
         $idx = (int) ceil(count($sorted) * $p) - 1;
 
         return round($sorted[max(0, $idx)], 1);
@@ -1091,6 +1087,6 @@ PROMPT;
      */
     private function hasAiSdk(): bool
     {
-        return trait_exists(Promptable::class);
+        return DigDeep::$aiSdkAvailable ?? trait_exists(Promptable::class);
     }
 }
