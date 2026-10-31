@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use LaravelPlus\DigDeep\DigDeep;
 use LaravelPlus\DigDeep\DigDeepCollector;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
+use LaravelPlus\DigDeep\Support\Redactor;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -53,8 +54,8 @@ final class ProfileRequest
         $this->collector->setRequest(
             $request->method(),
             '/'.$path,
-            $this->sanitizeHeaders($request->headers->all()),
-            $this->redact($request->all()),
+            Redactor::headers($request->headers->all()),
+            Redactor::keys($request->all()),
             $requestBody,
             $request->ip(),
         );
@@ -101,13 +102,13 @@ final class ProfileRequest
         $responseContent = $response->getContent() ?: '';
         $responseBody = '';
         $responseContentType = $response->headers->get('Content-Type', '');
-        if ($responseContent && (str_contains($responseContentType, 'json') || str_contains($responseContentType, 'text') || str_contains($responseContentType, 'xml') || str_contains($responseContentType, 'html'))) {
-            $responseBody = mb_substr($responseContent, 0, 16384);
+        if ($responseContent && config('digdeep.capture_response_bodies', true) && (str_contains($responseContentType, 'json') || str_contains($responseContentType, 'text') || str_contains($responseContentType, 'xml') || str_contains($responseContentType, 'html'))) {
+            $responseBody = mb_substr(Redactor::body($responseContent, $responseContentType), 0, 16384);
         }
 
         $this->collector->setResponse(
             $response->getStatusCode(),
-            $this->sanitizeHeaders($response->headers->all()),
+            Redactor::headers($response->headers->all()),
             mb_strlen($responseContent),
             $responseBody,
         );
@@ -201,14 +202,14 @@ final class ProfileRequest
                     continue;
                 }
 
-                if (Str::contains(Str::lower((string) $key), self::SENSITIVE_KEYS)) {
+                if (Redactor::isSensitiveKey((string) $key)) {
                     $data[(string) $key] = ['type' => gettype($value), 'value' => '[redacted]'];
 
                     continue;
                 }
 
                 if (is_array($value)) {
-                    $value = $this->redact($value);
+                    $value = Redactor::keys($value);
                 }
 
                 $data[(string) $key] = [
@@ -225,50 +226,19 @@ final class ProfileRequest
         }
     }
 
-    private const SENSITIVE_KEYS = ['password', 'token', 'secret', 'card', 'cvv', 'cvc', 'api_key', 'apikey', 'authorization'];
-
-    /**
-     * Recursively mask values whose key looks sensitive.
-     */
-    private function redact(array $data): array
-    {
-        foreach ($data as $key => $value) {
-            if (is_string($key) && Str::contains(Str::lower($key), self::SENSITIVE_KEYS)) {
-                $data[$key] = '[redacted]';
-            } elseif (is_array($value)) {
-                $data[$key] = $this->redact($value);
-            }
-        }
-
-        return $data;
-    }
-
     private function redactBody(Request $request, string $contentType): string
     {
         if (str_contains($contentType, 'json')) {
             $decoded = json_decode((string) $request->getContent(), true);
 
-            return is_array($decoded) ? (string) json_encode($this->redact($decoded)) : '[body omitted]';
+            return is_array($decoded) ? (string) json_encode(Redactor::keys($decoded)) : '[body omitted]';
         }
 
         if (str_contains($contentType, 'form')) {
-            return (string) json_encode($this->redact($request->post()));
+            return (string) json_encode(Redactor::keys($request->post()));
         }
 
         // xml/text bodies cannot be reliably scrubbed
         return '[body omitted]';
-    }
-
-    private function sanitizeHeaders(array $headers): array
-    {
-        $sensitive = ['authorization', 'proxy-authorization', 'cookie', 'set-cookie', 'x-xsrf-token', 'x-csrf-token', 'x-api-key', 'x-auth-token'];
-
-        foreach ($sensitive as $key) {
-            if (isset($headers[$key])) {
-                $headers[$key] = ['[redacted]'];
-            }
-        }
-
-        return $headers;
     }
 }

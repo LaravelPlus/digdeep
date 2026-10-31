@@ -6,6 +6,7 @@ namespace LaravelPlus\DigDeep\Collectors;
 
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Event;
+use LaravelPlus\DigDeep\Support\Redactor;
 use Throwable;
 
 final class LogCollector
@@ -22,7 +23,7 @@ final class LogCollector
 
             if (! empty($event->context)) {
                 try {
-                    $encoded = json_encode($event->context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                    $encoded = json_encode(Redactor::keys($event->context), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
                     $contextStr = $encoded !== false ? $encoded : '';
                 } catch (Throwable) {
                     $contextStr = '';

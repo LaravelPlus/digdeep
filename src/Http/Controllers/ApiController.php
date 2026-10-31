@@ -18,6 +18,7 @@ use LaravelPlus\DigDeep\DigDeep;
 use LaravelPlus\DigDeep\DigDeepCollector;
 use LaravelPlus\DigDeep\Models\DigDeepProfile;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
+use LaravelPlus\DigDeep\Support\Redactor;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Process\Process;
@@ -98,7 +99,7 @@ final class ApiController extends Controller
 
         $this->collector->setResponse(
             $response->getStatusCode(),
-            $this->sanitizeHeaders($response->headers->all()),
+            Redactor::headers($response->headers->all()),
             mb_strlen($response->getContent() ?: ''),
         );
 
@@ -222,7 +223,7 @@ final class ApiController extends Controller
 
         $this->collector->setResponse(
             $response->getStatusCode(),
-            $this->sanitizeHeaders($response->headers->all()),
+            Redactor::headers($response->headers->all()),
             mb_strlen($response->getContent() ?: ''),
         );
 
@@ -1091,18 +1092,5 @@ PROMPT;
     private function hasAiSdk(): bool
     {
         return trait_exists(Promptable::class);
-    }
-
-    private function sanitizeHeaders(array $headers): array
-    {
-        $sensitive = ['authorization', 'proxy-authorization', 'cookie', 'set-cookie', 'x-xsrf-token', 'x-csrf-token', 'x-api-key', 'x-auth-token'];
-
-        foreach ($sensitive as $key) {
-            if (isset($headers[$key])) {
-                $headers[$key] = ['[redacted]'];
-            }
-        }
-
-        return $headers;
     }
 }
