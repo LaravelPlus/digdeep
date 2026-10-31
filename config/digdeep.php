@@ -46,6 +46,9 @@ return [
 
     'auto_profile' => env('DIGDEEP_AUTO_PROFILE', true),
 
+    // Share of requests to profile, 0.0–1.0. Lower it on busy apps to cut DB writes.
+    'sample_rate' => env('DIGDEEP_SAMPLE_RATE', 1.0),
+
     'max_profiles' => env('DIGDEEP_MAX_PROFILES', 200),
 
     /*

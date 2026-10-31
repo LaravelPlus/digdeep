@@ -13,6 +13,7 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 - One config-driven redactor (`redact.keys`, `redact.headers`) now also covers SQL bindings, log context, response bodies and HTTP client bodies. `DIGDEEP_CAPTURE_RESPONSE_BODIES=false` turns response body capture off.
 
 ### Fixed
+- Streamed and binary responses (downloads, SSE) are no longer profiled. New `sample_rate` option (`DIGDEEP_SAMPLE_RATE`) profiles only a share of requests.
 - `max_profile_size_kb` is enforced: oversized profiles drop their largest sections until they fit. Collectors keep at most `limits.max_entries` entries and shorten long strings. Pruning runs on a lottery (`prune_lottery`) and deletes in chunks.
 - Listeners are registered once per worker, so Octane/FrankenPHP no longer pile up listeners or leak data between requests.
 - AI endpoints return 501 instead of crashing when `laravel/ai` is missing.

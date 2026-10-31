@@ -11,7 +11,9 @@ use LaravelPlus\DigDeep\DigDeep;
 use LaravelPlus\DigDeep\DigDeepCollector;
 use LaravelPlus\DigDeep\Storage\DigDeepStorage;
 use LaravelPlus\DigDeep\Support\Redactor;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 final class ProfileRequest
@@ -33,6 +35,11 @@ final class ProfileRequest
 
         // Skip if already being profiled via sub-request trigger
         if ($request->headers->has('X-DigDeep-Profile')) {
+            return $next($request);
+        }
+
+        $sampleRate = (float) config('digdeep.sample_rate', 1.0);
+        if ($sampleRate < 1.0 && mt_rand() / mt_getrandmax() >= $sampleRate) {
             return $next($request);
         }
 
@@ -70,6 +77,11 @@ final class ProfileRequest
             $this->collector->setException($e);
 
             throw $e;
+        }
+
+        // Downloads and streams (SSE, StreamedJsonResponse) have no capturable body; don't store them.
+        if ($response instanceof StreamedResponse || $response instanceof BinaryFileResponse) {
+            return $response;
         }
 
         $this->collector->markLifecyclePhase('middleware_done');
