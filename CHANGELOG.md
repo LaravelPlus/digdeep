@@ -4,6 +4,16 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-02
+
+### Upgrading from 1.x
+- Outside `local`/`testing`, DigDeep is off unless `DIGDEEP_ENABLED=true`. Viewers rejected by the `DigDeep::auth()` gate get a 404 instead of a 403.
+- `run-command` and `ai-apply` return 403 outside `local` unless `DIGDEEP_CODE_ACTIONS=true`.
+- POST and DELETE API calls need a CSRF token.
+- Text/XML request bodies are no longer stored. SQL bindings on sensitive columns, log context and JSON response bodies are now redacted.
+- `Controllers`, `Middleware` and `Commands` moved to `Http\Controllers`, `Http\Middleware` and `Console\Commands`. Update any direct references to them.
+- Pruning now runs on 1 in 10 writes (`prune_lottery`), so the table can briefly exceed `max_profiles`. Set `[1, 1]` for the old behaviour.
+
 ### Security
 - Disabled by default outside `local`/`testing`. Dashboard routes use the `web` group (CSRF). Denied requests get a 404.
 - Artisan runner and AI "apply fix" are limited to `local` unless `DIGDEEP_CODE_ACTIONS=true`.
@@ -31,3 +41,6 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ### Added
 - Pest + Testbench suite, Pint, Larastan and a CI matrix (PHP 8.4/8.5 × Laravel 12/13).
+
+[Unreleased]: https://github.com/LaravelPlus/digdeep/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/LaravelPlus/digdeep/compare/v1.0.0...v2.0.0
