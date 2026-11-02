@@ -1,5 +1,10 @@
 # DigDeep
 
+[![Latest version](https://img.shields.io/packagist/v/laravelplus/digdeep.svg)](https://packagist.org/packages/laravelplus/digdeep)
+[![Total downloads](https://img.shields.io/packagist/dt/laravelplus/digdeep.svg)](https://packagist.org/packages/laravelplus/digdeep)
+[![Tests](https://github.com/LaravelPlus/digdeep/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/LaravelPlus/digdeep/actions/workflows/tests.yml)
+[![License](https://img.shields.io/packagist/l/laravelplus/digdeep.svg)](LICENSE)
+
 A Laravel request profiler that captures the complete execution flow of every request — queries, events, views, cache, mail, jobs, HTTP calls, Inertia props, Eloquent models, and full lifecycle timing — all in a Dracula-themed dashboard.
 
 ## Requirements
@@ -10,17 +15,7 @@ A Laravel request profiler that captures the complete execution flow of every re
 
 ## Installation
 
-Until the package is on Packagist, add the GitHub repository to your app's `composer.json`:
-
-```json
-{
-    "repositories": [
-        { "type": "vcs", "url": "https://github.com/LaravelPlus/digdeep" }
-    ]
-}
-```
-
-Then install it as a dev dependency and run the migrations:
+Install it as a dev dependency and run the migrations:
 
 ```bash
 composer require laravelplus/digdeep --dev

@@ -8,7 +8,7 @@
         "debug",
         "performance",
         "queries",
-        "n+1",
+        "n-plus-one",
         "mcp"
     ],
     "type": "library",
