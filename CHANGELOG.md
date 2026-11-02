@@ -43,4 +43,4 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 - Pest + Testbench suite, Pint, Larastan and a CI matrix (PHP 8.4/8.5 × Laravel 12/13).
 
 [Unreleased]: https://github.com/LaravelPlus/digdeep/compare/v2.0.0...HEAD
-[2.0.0]: https://github.com/LaravelPlus/digdeep/compare/v1.0.0...v2.0.0
+[2.0.0]: https://github.com/LaravelPlus/digdeep/compare/148f71f...v2.0.0
